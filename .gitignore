@@ -1,1 +1,5 @@
 INV-*
+node_modules/
+dist/
+*.pdf
+.playwright-mcp/

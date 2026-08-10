@@ -1,0 +1,22 @@
+{
+  "name": "clockify-invoice",
+  "version": "2.0.0",
+  "description": "Generate a PDF invoice from a Clockify Detailed report CSV — in the browser or from the command line.",
+  "type": "module",
+  "bin": {
+    "clockify-invoice": "./src/cli.ts"
+  },
+  "scripts": {
+    "cli": "bun run src/cli.ts",
+    "web": "bun ./src/web/index.html",
+    "build:web": "bun build ./src/web/index.html --outdir=dist --minify",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pdf-lib": "^1.17.1"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.5.0"
+  }
+}
