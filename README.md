@@ -28,6 +28,13 @@ Fill in the form, drop the CSV on the dropzone, click **Generate PDF**. The
 file is parsed and the PDF is produced entirely client-side; nothing is
 uploaded. Form values persist in localStorage for repeat invoices.
 
+The CLI can also host the web version locally:
+
+```sh
+bun run src/cli.ts serve            # http://localhost:4520
+bun run src/cli.ts serve --port 8080
+```
+
 ## 2. Interactive CLI
 
 ```sh
@@ -53,7 +60,8 @@ bun run src/cli.ts report.csv --no-input \
 terminal, e.g. in CI). Run `bun run src/cli.ts --help` for all flags:
 grouping (`-g description|project|day|entry`), non-billable entries
 (`--all`), per-entry appendix page (`--appendix`), currency, net days,
-rounding, accent color, paper size, and more.
+rounding, accent color (`--accent "#7a2048"`), typeface
+(`--font sans|serif|mono`), paper size, and more.
 
 ## Config file
 
@@ -63,10 +71,26 @@ writes the effective settings back). Flags override the config; the CSV's
 "Billable Rate" column overrides the `rates` map, which is used as fallback
 per project name with `"default"` covering the rest.
 
+## Fonts
+
+Three embedded typefaces (`--font`, or the Typeface dropdown): **Inter**
+(sans, default), **Source Serif 4**, and **JetBrains Mono** — all
+OFL-licensed, from [Fontsource](https://fontsource.org/). Coverage spans
+Latin, Latin Extended, Cyrillic, Greek, and Vietnamese, with per-character
+fallback across subsets (serif/mono additionally fall back to Inter for
+glyphs they lack, e.g. ₹); only the glyphs actually used are embedded, so
+PDFs stay small. Scripts outside that coverage (e.g. CJK) render as `?`.
+The TTFs in `src/fonts/` are generated from the Fontsource packages by
+`bun scripts/build-fonts.ts`.
+
+## Claude Code skill
+
+`bun run src/cli.ts --install-skill` installs a skill at
+`~/.claude/skills/clockify-invoice/` so Claude can generate invoices with
+this tool when you ask. Interactive runs also offer to install it.
+
 ## Notes
 
 - Line items group entries by description (default), project, day, or not at
   all; totals, tax, and optional round-up-to-N-minutes match the original
   Python version (`clockifyinvoice`, kept in git history).
-- PDF text uses the standard Helvetica fonts (WinAnsi encoding); characters
-  outside that set are replaced with `?`.

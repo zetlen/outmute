@@ -26,7 +26,9 @@ ${PROG} — generate a PDF invoice from a Clockify Detailed report CSV
 Usage:
   ${PROG}                         interactive: prompts for anything missing
   ${PROG} <report.csv> [options]  non-interactive when all required info is available
+  ${PROG} serve [--port <n>]      host the browser version at localhost (default port 4520)
   ${PROG} --init                  write a starter config and exit
+  ${PROG} --install-skill         install the Claude Code skill and exit
 
 Options:
   -o, --output <path>       output PDF path (default: <number>.pdf)
@@ -47,6 +49,7 @@ Config overrides (each replaces the corresponding config value):
       --currency <symbol>       --tax-percent <n>      --tax-label <text>
       --net-days <n>            --round-up <minutes>   --notes <text>
       --accent <#rrggbb>        --paper letter|a4
+      --font sans|serif|mono    typeface: Inter, Source Serif 4, or JetBrains Mono
 
 Export the CSV in Clockify: Reports > Detailed > Export > Save as CSV.
 `;
@@ -76,6 +79,9 @@ const CONFIG_TEMPLATE: unknown = {
 };
 
 interface Answers {
+  serve: boolean;
+  port: number;
+  installSkill: boolean;
   csvPath?: string;
   output?: string;
   number?: string;
@@ -105,6 +111,9 @@ function parseCliArgs(): { answers: Answers; overrides: Record<string, string | 
         help: { type: "boolean", short: "h" },
         "no-input": { type: "boolean" },
         "save-config": { type: "boolean" },
+        "install-skill": { type: "boolean" },
+        port: { type: "string" },
+        font: { type: "string" },
         "from-name": { type: "string" },
         "from-lines": { type: "string" },
         "to-name": { type: "string" },
@@ -151,10 +160,19 @@ function parseCliArgs(): { answers: Answers; overrides: Record<string, string | 
   if (values.accent && !/^#[0-9a-fA-F]{6}$/.test(values.accent)) {
     die(`invalid --accent ${JSON.stringify(values.accent)}; expected #rrggbb`);
   }
+  if (values.font && !["sans", "serif", "mono"].includes(values.font)) {
+    die(`invalid --font ${JSON.stringify(values.font)}; use sans|serif|mono`);
+  }
+  if (values.port && !(Number.isInteger(Number(values.port)) && Number(values.port) > 0)) {
+    die(`invalid --port ${JSON.stringify(values.port)}; expected a port number`);
+  }
 
   return {
     answers: {
-      csvPath: positionals[0],
+      serve: positionals[0] === "serve",
+      port: Number(values.port ?? 4520),
+      installSkill: Boolean(values["install-skill"]),
+      csvPath: positionals[0] === "serve" ? undefined : positionals[0],
       output: values.output,
       number: values.number,
       group,
@@ -180,6 +198,7 @@ function parseCliArgs(): { answers: Answers; overrides: Record<string, string | 
       notes: values.notes,
       accent: values.accent,
       paper: values.paper,
+      font: values.font,
     },
   };
 }
@@ -217,6 +236,28 @@ function applyOverrides(config: InvoiceConfig, o: Record<string, string | undefi
   if (o.notes !== undefined) config.invoice.notes = o.notes;
   if (o.accent !== undefined) config.invoice.accent = o.accent;
   if (o.paper !== undefined) config.invoice.paper = o.paper as "letter" | "a4";
+  if (o.font !== undefined) config.invoice.font = o.font as InvoiceConfig["invoice"]["font"];
+}
+
+// ---- Web server & Claude skill ----
+
+async function serveWeb(port: number): Promise<void> {
+  // Dynamic import so ordinary CLI runs never touch the web bundle.
+  const index = (await import("./web/index.html")).default;
+  const server = Bun.serve({ port, routes: { "/*": index } });
+  console.log(`${PROG}: invoice generator running at ${server.url} — Ctrl-C to stop`);
+}
+
+function skillPath(): string {
+  return resolve(homedir(), ".claude", "skills", "clockify-invoice", "SKILL.md");
+}
+
+function installSkill(): void {
+  const template = readFileSync(resolve(import.meta.dir, "../skill/SKILL.md"), "utf8");
+  const target = skillPath();
+  mkdirSync(dirname(target), { recursive: true });
+  writeFileSync(target, template.replaceAll("{{REPO}}", resolve(import.meta.dir, "..")));
+  console.log(`Installed Claude skill at ${target}`);
 }
 
 // ---- Interactive prompting ----
@@ -324,6 +365,14 @@ function loadCsv(path: string): ParsedReport {
 
 async function main(): Promise<void> {
   const { answers, overrides } = parseCliArgs();
+  if (answers.installSkill) {
+    installSkill();
+    return;
+  }
+  if (answers.serve) {
+    await serveWeb(answers.port);
+    return;
+  }
   const { config, found: configFound } = loadConfigFile(
     answers.configPath,
     answers.configExplicit,
@@ -420,6 +469,14 @@ async function main(): Promise<void> {
       validate: (raw) => (/^[yn]/i.test(raw) ? null : "please answer y or n"),
     });
     answers.saveConfig = /^y/i.test(save);
+    if (!existsSync(skillPath())) {
+      const install = await ask(
+        rl,
+        "Install the Claude Code skill so Claude can generate invoices for you? (y/n)",
+        { fallback: "n", validate: (raw) => (/^[yn]/i.test(raw) ? null : "please answer y or n") },
+      );
+      if (/^y/i.test(install)) installSkill();
+    }
     rl.close();
     console.log();
   }

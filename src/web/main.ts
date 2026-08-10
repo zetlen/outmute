@@ -73,7 +73,7 @@ dropzone.addEventListener("drop", (e) => {
 // ---- Form persistence ----
 const FIELD_IDS = [
   "fromName", "fromLines", "toName", "toLines", "number", "rate", "currency",
-  "netDays", "taxPercent", "taxLabel", "roundUp", "group", "accent", "paper", "notes",
+  "netDays", "taxPercent", "taxLabel", "roundUp", "group", "accent", "paper", "font", "notes",
 ] as const;
 const CHECKBOX_IDS = ["all", "appendix"] as const;
 const STORAGE_KEY = "clockify-invoice-form";
@@ -121,6 +121,7 @@ form.addEventListener("submit", async (e) => {
       notes: $<HTMLTextAreaElement>("notes").value,
       accent: val("accent"),
       paper: val("paper"),
+      font: val("font"),
     },
     rates: rate > 0 ? { default: rate } : {},
   });

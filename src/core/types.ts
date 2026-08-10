@@ -1,3 +1,5 @@
+import type { FontFamily } from "./fonts";
+
 /** A single time entry from the Clockify CSV. Days are ISO "YYYY-MM-DD" strings. */
 export interface Entry {
   day: string;
@@ -46,6 +48,8 @@ export interface InvoiceConfig {
     /** Accent color, #rrggbb. */
     accent: string;
     paper: "letter" | "a4";
+    /** Typeface: sans = Inter, serif = Source Serif 4, mono = JetBrains Mono. */
+    font: FontFamily;
   };
   /** Hourly rates by Clockify project name; "default" covers everything else. */
   rates: Record<string, number>;
@@ -98,6 +102,7 @@ export const DEFAULT_CONFIG: InvoiceConfig = {
     notes: "Thank you for your business. Please remit payment within {net_days} days.",
     accent: "#20509e",
     paper: "letter",
+    font: "sans",
   },
   rates: {},
 };
@@ -132,6 +137,7 @@ export function mergeConfig(partial: unknown): InvoiceConfig {
       notes: str(i.notes, d.notes),
       accent: /^#[0-9a-fA-F]{6}$/.test(i.accent ?? "") ? i.accent : d.accent,
       paper: i.paper === "a4" ? "a4" : "letter",
+      font: ["sans", "serif", "mono"].includes(i.font) ? i.font : d.font,
     },
     rates,
   };

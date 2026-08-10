@@ -1,6 +1,7 @@
-import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb, type RGB } from "pdf-lib";
-import type { Invoice, Line } from "./types";
+import { PDFDocument, PDFPage, rgb, type RGB } from "pdf-lib";
+import type { Invoice } from "./types";
 import { fmtDay, fmtHours, money } from "./format";
+import { embedFamily, Face } from "./fonts";
 
 const PAPER = {
   letter: [612, 792] as [number, number],
@@ -18,17 +19,9 @@ function hexToRgb(hex: string): RGB {
   return rgb(((n >> 16) & 0xff) / 255, ((n >> 8) & 0xff) / 255, (n & 0xff) / 255);
 }
 
-// Standard-14 fonts only encode WinAnsi; replace anything outside it so
-// pdf-lib doesn't throw on exotic characters in descriptions.
-const WINANSI =
-  /[\x20-\x7E -ÿ€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ]/;
-function sanitize(text: string): string {
-  return [...text].map((c) => (WINANSI.test(c) ? c : "?")).join("");
-}
+interface Style { face: Face; size: number; color: RGB; }
 
-interface Style { font: PDFFont; size: number; color: RGB; }
-
-function wrap(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
+function wrap(text: string, face: Face, size: number, maxWidth: number): string[] {
   const out: string[] = [];
   for (const rawLine of text.split("\n")) {
     const words = rawLine.split(/\s+/).filter(Boolean);
@@ -36,16 +29,16 @@ function wrap(text: string, font: PDFFont, size: number, maxWidth: number): stri
     let line = "";
     for (let word of words) {
       // Hard-break words wider than the column.
-      while (font.widthOfTextAtSize(word, size) > maxWidth && word.length > 1) {
+      while (face.widthOf(word, size) > maxWidth && word.length > 1) {
         let cut = word.length - 1;
-        while (cut > 1 && font.widthOfTextAtSize(word.slice(0, cut), size) > maxWidth) cut--;
+        while (cut > 1 && face.widthOf(word.slice(0, cut), size) > maxWidth) cut--;
         const head = word.slice(0, cut);
         if (line) { out.push(line); line = ""; }
         out.push(head);
         word = word.slice(cut);
       }
       const candidate = line ? `${line} ${word}` : word;
-      if (line && font.widthOfTextAtSize(candidate, size) > maxWidth) {
+      if (line && face.widthOf(candidate, size) > maxWidth) {
         out.push(line);
         line = word;
       } else {
@@ -63,8 +56,6 @@ class Painter {
   constructor(
     readonly doc: PDFDocument,
     readonly pageSize: [number, number],
-    readonly regular: PDFFont,
-    readonly bold: PDFFont,
   ) {
     this.addPage();
   }
@@ -88,29 +79,31 @@ class Painter {
   }
 
   text(str: string, x: number, s: Style): void {
-    this.page.drawText(sanitize(str), { x, y: this.y, size: s.size, font: s.font, color: s.color });
+    let cx = x;
+    for (const seg of s.face.segments(str)) {
+      this.page.drawText(seg.text, { x: cx, y: this.y, size: s.size, font: seg.font, color: s.color });
+      cx += seg.font.widthOfTextAtSize(seg.text, s.size);
+    }
   }
 
   textRight(str: string, right: number, s: Style): number {
-    const clean = sanitize(str);
-    const w = s.font.widthOfTextAtSize(clean, s.size);
-    this.page.drawText(clean, { x: right - w, y: this.y, size: s.size, font: s.font, color: s.color });
+    const w = s.face.widthOf(str, s.size);
+    this.text(str, right - w, s);
     return w;
   }
 
   /** Draw text with letter-spacing; returns total width. */
   tracked(str: string, x: number, s: Style, tracking: number): number {
     let cx = x;
-    for (const ch of sanitize(str)) {
-      this.page.drawText(ch, { x: cx, y: this.y, size: s.size, font: s.font, color: s.color });
-      cx += s.font.widthOfTextAtSize(ch, s.size) + tracking;
+    for (const ch of str) {
+      this.text(ch, cx, s);
+      cx += s.face.widthOf(ch, s.size) + tracking;
     }
     return cx - x - tracking;
   }
 
   trackedWidth(str: string, s: Style, tracking: number): number {
-    const clean = sanitize(str);
-    return s.font.widthOfTextAtSize(clean, s.size) + tracking * Math.max(0, clean.length - 1);
+    return s.face.widthOf(str, s.size) + tracking * Math.max(0, [...str].length - 1);
   }
 
   hline(x1: number, x2: number, thickness: number, color: RGB, dy = 0): void {
@@ -127,16 +120,15 @@ export async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   doc.setTitle(`Invoice ${inv.number}`);
   doc.setCreator("clockify-invoice");
-  const regular = await doc.embedFont(StandardFonts.Helvetica);
-  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+  const { regular, bold } = await embedFamily(doc, inv.config.invoice.font);
   const accent = hexToRgb(inv.config.invoice.accent);
-  const p = new Painter(doc, PAPER[inv.config.invoice.paper], regular, bold);
+  const p = new Painter(doc, PAPER[inv.config.invoice.paper]);
   const sym = inv.currency;
 
-  const body: Style = { font: regular, size: 9.5, color: INK };
-  const small: Style = { font: regular, size: 8.5, color: MUTED };
-  const label: Style = { font: bold, size: 7, color: accent };
-  const colhead: Style = { font: regular, size: 7, color: MUTED };
+  const body: Style = { face: regular, size: 9.5, color: INK };
+  const small: Style = { face: regular, size: 8.5, color: MUTED };
+  const label: Style = { face: bold, size: 7, color: accent };
+  const colhead: Style = { face: regular, size: 7, color: MUTED };
 
   const labelRow = (text: string) => {
     p.tracked(text.toUpperCase(), MARGIN, label, 1.1);
@@ -146,16 +138,16 @@ export async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
   // ---- Header: from-block left, title + meta right ----
   const topY = p.y - 14;
   p.y = topY;
-  p.text(inv.config.from.name, MARGIN, { font: bold, size: 13, color: INK });
+  p.text(inv.config.from.name, MARGIN, { face: bold, size: 13, color: INK });
   p.y -= 15;
   for (const line of inv.config.from.lines) {
-    p.text(line, MARGIN, { font: regular, size: 9, color: MUTED });
+    p.text(line, MARGIN, { face: regular, size: 9, color: MUTED });
     p.y -= 12.5;
   }
   const afterFrom = p.y;
 
   p.y = topY - 3;
-  const titleStyle: Style = { font: regular, size: 22, color: accent };
+  const titleStyle: Style = { face: regular, size: 22, color: accent };
   const titleW = p.trackedWidth("INVOICE", titleStyle, 4);
   p.tracked("INVOICE", p.right - titleW, titleStyle, 4);
   p.y -= 24;
@@ -166,18 +158,18 @@ export async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
     ["Period", `${fmtDay(inv.periodStart)} – ${fmtDay(inv.periodEnd)}`],
   ];
   for (const [name, value] of metaRows) {
-    const valueW = p.textRight(value, p.right, { font: bold, size: 9, color: INK });
-    p.textRight(name, p.right - valueW - 6, { font: regular, size: 9, color: MUTED });
+    const valueW = p.textRight(value, p.right, { face: bold, size: 9, color: INK });
+    p.textRight(name, p.right - valueW - 6, { face: regular, size: 9, color: MUTED });
     p.y -= 13;
   }
   p.y = Math.min(afterFrom, p.y) - 26;
 
   // ---- Bill to ----
   labelRow("Bill To");
-  p.text(inv.config.to.name, MARGIN, { font: bold, size: 11, color: INK });
+  p.text(inv.config.to.name, MARGIN, { face: bold, size: 11, color: INK });
   p.y -= 14;
   for (const line of inv.config.to.lines) {
-    p.text(line, MARGIN, { font: regular, size: 9, color: INK });
+    p.text(line, MARGIN, { face: regular, size: 9, color: INK });
     p.y -= 12.5;
   }
   p.y -= 18;
@@ -245,8 +237,8 @@ export async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
   p.y -= 8;
   const totalsLeft = MARGIN + p.contentWidth * 0.58;
   const totalRow = (name: string, value: string, gray = true) => {
-    p.text(name, totalsLeft, { font: regular, size: 9.5, color: gray ? MUTED : INK });
-    p.textRight(value, p.right, { font: regular, size: 9.5, color: INK });
+    p.text(name, totalsLeft, { face: regular, size: 9.5, color: gray ? MUTED : INK });
+    p.textRight(value, p.right, { face: regular, size: 9.5, color: INK });
     p.y -= 15;
   };
   totalRow("Subtotal", money(sym, inv.subtotal));
@@ -256,8 +248,8 @@ export async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
   }
   p.hline(totalsLeft, p.right, 1.4, INK, 10);
   p.y -= 4;
-  p.text("Total Due", totalsLeft, { font: bold, size: 11.5, color: accent });
-  p.textRight(money(sym, inv.total), p.right, { font: bold, size: 11.5, color: accent });
+  p.text("Total Due", totalsLeft, { face: bold, size: 11.5, color: accent });
+  p.textRight(money(sym, inv.total), p.right, { face: bold, size: 11.5, color: accent });
   p.y -= 30;
 
   // ---- Notes ----
@@ -270,7 +262,7 @@ export async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
     p.ensure(noteLines.length * 12 + 20);
     labelRow("Notes");
     for (const text of noteLines) {
-      p.text(text, MARGIN, { font: regular, size: 9, color: MUTED });
+      p.text(text, MARGIN, { face: regular, size: 9, color: MUTED });
       p.y -= 12;
     }
   }
@@ -295,7 +287,7 @@ export async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
         ["Hours", a.hours, true],
       ]);
     appendixHeader();
-    const cell: Style = { font: regular, size: 8.5, color: INK };
+    const cell: Style = { face: regular, size: 8.5, color: INK };
     for (const entry of inv.entries) {
       const descLines = wrap(entry.description || "", regular, 8.5, a.descW);
       const projLines = wrap(entry.project || "", regular, 8.5, a.desc - a.project - 8);
@@ -322,7 +314,7 @@ export async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
   // ---- Footer on the last page ----
   p.y = MARGIN;
   p.hline(MARGIN, p.right, 0.6, RULE, 12);
-  const footer: Style = { font: regular, size: 7.5, color: MUTED };
+  const footer: Style = { face: regular, size: 7.5, color: MUTED };
   p.text(`Invoice ${inv.number}`, MARGIN, footer);
   p.textRight(`${money(sym, inv.total)} due ${fmtDay(inv.due)}`, p.right, footer);
 
