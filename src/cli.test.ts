@@ -2,14 +2,15 @@
  * Integration tests: spawn the real CLI as a subprocess against fixture CSVs.
  *
  * Every run gets a throwaway HOME (and XDG_CONFIG_HOME beneath it) so the
- * suite can never read the developer's own ~/.config/outmute/config.json, and
+ * suite can never read the developer's own ~/.config/outmute/config.toml, and
  * cwd is that same temp dir so default-named PDFs don't land in the repo.
  */
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { PDFDocument } from "pdf-lib";
+import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
 
 const REPO = resolve(import.meta.dir, "..");
 const CLI = resolve(REPO, "src/cli.ts");
@@ -75,9 +76,15 @@ async function inspectPdf(path: string) {
   return { bytes, pages: doc.getPageCount(), title: doc.getTitle(), creator: doc.getCreator() };
 }
 
-function writeConfig(contents: unknown): string {
+function writeJsonConfig(contents: unknown): string {
   const path = join(home, "config.json");
   writeFileSync(path, JSON.stringify(contents, null, 2));
+  return path;
+}
+
+function writeTomlConfig(contents: unknown): string {
+  const path = join(home, "config.toml");
+  writeFileSync(path, stringifyToml(contents as Record<string, unknown>));
   return path;
 }
 
@@ -235,9 +242,18 @@ describe("cli error paths", () => {
     expect(result.stderr).toContain(`no config at ${missing}`);
   }, 30_000);
 
-  test("rejects an unparseable config file", () => {
-    const bad = writeConfig("{ not json");
+  test("rejects an unparseable JSON config file", () => {
+    const bad = join(home, "bad.json");
     writeFileSync(bad, "{ not json");
+    const result = runCli(SAMPLE, "--no-input", "-c", bad);
+
+    expect(result.code).not.toBe(0);
+    expect(result.stderr).toContain("couldn't parse");
+  }, 30_000);
+
+  test("rejects an unparseable TOML config file", () => {
+    const bad = join(home, "bad.toml");
+    writeFileSync(bad, "not = valid = toml [[");
     const result = runCli(SAMPLE, "--no-input", "-c", bad);
 
     expect(result.code).not.toBe(0);
@@ -252,9 +268,9 @@ describe("cli error paths", () => {
   }, 30_000);
 });
 
-describe("cli config precedence", () => {
+describe("cli config precedence (JSON, still read for configs from before TOML)", () => {
   test("a -c config supplies defaults", async () => {
-    const config = writeConfig(CONFIG);
+    const config = writeJsonConfig(CONFIG);
     const out = join(home, "from-config.pdf");
     const result = runCli(SAMPLE, "--no-input", "-c", config, "-o", out);
 
@@ -265,7 +281,7 @@ describe("cli config precedence", () => {
   }, 30_000);
 
   test("flags override the values from -c", async () => {
-    const config = writeConfig(CONFIG);
+    const config = writeJsonConfig(CONFIG);
     const out = join(home, "overridden.pdf");
     const result = runCli(
       SAMPLE,
@@ -289,7 +305,7 @@ describe("cli config precedence", () => {
   }, 30_000);
 
   test("per-entry CSV rates outrank the config's default rate", async () => {
-    const config = writeConfig(CONFIG);
+    const config = writeJsonConfig(CONFIG);
     const out = join(home, "rated-with-config.pdf");
     const result = runCli(RATED, "--no-input", "-c", config, "-o", out, "--rate", "1");
 
@@ -298,23 +314,122 @@ describe("cli config precedence", () => {
     // rates.default only fills in entries that have none.
     expect(result.stdout).toContain("$1,100.00");
   }, 30_000);
+});
 
-  test("falls back to the config in XDG_CONFIG_HOME, which the temp HOME isolates", async () => {
+describe("cli config precedence (TOML)", () => {
+  test("a -c config supplies defaults", async () => {
+    const config = writeTomlConfig(CONFIG);
+    const out = join(home, "from-toml-config.pdf");
+    const result = runCli(SAMPLE, "--no-input", "-c", config, "-o", out);
+
+    expect(result.code).toBe(0);
+    // The config's rate (100) and numberPrefix (ACME-) both take effect.
+    expect(result.stdout).toContain("$1,250.00");
+    expect((await inspectPdf(out)).title).toBe(`Invoice ACME-${LAST_DAY}`);
+  }, 30_000);
+
+  test("--init writes a commented TOML starter that outmute can then read back", async () => {
+    const init = runCli("--init");
+    expect(init.code).toBe(0);
+
+    const defaultPath = join(home, ".config", "outmute", "config.toml");
+    expect(existsSync(defaultPath)).toBe(true);
+    expect(readFileSync(defaultPath, "utf8")).toContain("# outmute config");
+
+    const out = join(home, "from-init.pdf");
+    const result = runCli(
+      SAMPLE,
+      "--no-input",
+      "-o",
+      out,
+      "--from-name",
+      "Jane Dev",
+      "--to-name",
+      "Acme Corp",
+    );
+    expect(result.code).toBe(0);
+    expect((await inspectPdf(out)).title).toBe(`Invoice INV-${LAST_DAY}`);
+  }, 30_000);
+
+  test("falls back to config.toml in XDG_CONFIG_HOME, which the temp HOME isolates", async () => {
     // Proves both that the default config location is honoured and that these
     // tests read it from the sandbox rather than the developer's real home.
-    const result = runCli("--init");
-    expect(result.code).toBe(0);
-
-    const defaultPath = join(home, ".config", "outmute", "config.json");
-    expect(existsSync(defaultPath)).toBe(true);
-
-    writeFileSync(defaultPath, JSON.stringify({ ...CONFIG, invoice: { numberPrefix: "HOME-" } }));
+    const defaultPath = join(home, ".config", "outmute", "config.toml");
+    mkdirSync(join(home, ".config", "outmute"), { recursive: true });
+    writeFileSync(defaultPath, stringifyToml({ ...CONFIG, invoice: { numberPrefix: "HOME-" } }));
 
     const out = join(home, "default-config.pdf");
     const generated = runCli(SAMPLE, "--no-input", "-o", out);
     expect(generated.code).toBe(0);
     expect(generated.stdout).toContain("$1,250.00");
     expect((await inspectPdf(out)).title).toBe(`Invoice HOME-${LAST_DAY}`);
+  }, 30_000);
+
+  test("--save-config writes TOML to the default config path", async () => {
+    const out = join(home, "saved.pdf");
+    const result = runCli(
+      SAMPLE,
+      "--no-input",
+      "-o",
+      out,
+      "--save-config",
+      "--from-name",
+      "Jane Dev",
+      "--to-name",
+      "Acme Corp",
+      "--rate",
+      "150",
+    );
+    expect(result.code).toBe(0);
+
+    const savedPath = join(home, ".config", "outmute", "config.toml");
+    expect(existsSync(savedPath)).toBe(true);
+    const saved = parseToml(readFileSync(savedPath, "utf8")) as any;
+    expect(saved.from.name).toBe("Jane Dev");
+    expect(saved.to.name).toBe("Acme Corp");
+    expect(saved.rates.default).toBe(150);
+  }, 30_000);
+});
+
+describe("cli config format fallback", () => {
+  test("reads an existing outmute/config.json when no config.toml exists yet", async () => {
+    const dir = join(home, ".config", "outmute");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "config.json"), JSON.stringify(CONFIG));
+
+    const out = join(home, "legacy-json.pdf");
+    const result = runCli(SAMPLE, "--no-input", "-o", out);
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain("$1,250.00");
+    expect((await inspectPdf(out)).title).toBe(`Invoice ACME-${LAST_DAY}`);
+  }, 30_000);
+
+  test("prefers config.toml over an existing config.json in the same directory", async () => {
+    const dir = join(home, ".config", "outmute");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      join(dir, "config.json"),
+      JSON.stringify({ ...CONFIG, invoice: { numberPrefix: "JSON-" } }),
+    );
+    writeFileSync(
+      join(dir, "config.toml"),
+      stringifyToml({ ...CONFIG, invoice: { numberPrefix: "TOML-" } }),
+    );
+
+    const out = join(home, "toml-wins.pdf");
+    const result = runCli(SAMPLE, "--no-input", "-o", out);
+    expect(result.code).toBe(0);
+    expect((await inspectPdf(out)).title).toBe(`Invoice TOML-${LAST_DAY}`);
+  }, 30_000);
+
+  test("--init writes config.toml even when an old config.json already exists", () => {
+    const dir = join(home, ".config", "outmute");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "config.json"), JSON.stringify(CONFIG));
+
+    const result = runCli("--init");
+    expect(result.code).toBe(0);
+    expect(existsSync(join(dir, "config.toml"))).toBe(true);
   }, 30_000);
 });
 

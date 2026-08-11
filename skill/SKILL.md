@@ -22,10 +22,11 @@ Always run non-interactively (`--no-input`) and pass everything as flags:
 ```
 
 Saved defaults (sender, client, rates, tax…) live in
-`~/.config/outmute/config.json` (or the pre-rename
-`~/.config/clockify-invoice/config.json`); read it first if it exists — then
-you only need flags for what's missing or different. If it doesn't exist and
-the user will invoice again, offer to save their answers with `--save-config`.
+`~/.config/outmute/config.toml` (an older `config.json`, or the pre-rename
+`~/.config/clockify-invoice/config.json`, is also read if no `config.toml`
+exists yet); read it first if it exists — then you only need flags for what's
+missing or different. If it doesn't exist and the user will invoice again,
+offer to save their answers with `--save-config`.
 
 Required knowledge before running — from the config file or by asking the user:
 

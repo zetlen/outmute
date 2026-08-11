@@ -11,6 +11,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { homedir } from "node:os";
 import { createInterface } from "node:readline";
+import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
 import { AdapterError, adapterNames, parseTimesheet } from "./adapters";
 import type { Timesheet } from "./core/timesheet";
 import { computeInvoice, InvoiceError } from "./core/invoice";
@@ -46,7 +47,9 @@ Usage:
 
 Options:
   -o, --output <path>       output PDF path (default: <number>.pdf)
-  -c, --config <path>       JSON config file (default: ~/.config/outmute/config.json)
+  -c, --config <path>       config file, TOML or JSON by extension
+                             (default: ~/.config/outmute/config.toml; an existing
+                             .json config from before TOML is also read)
   -n, --number <id>         invoice number (default: prefix + last entry date)
   -g, --group <mode>        line item grouping: description|project|day|entry (default: description)
       --input-format <name> time report format (default: auto-detect; formats: ${adapterNames.join("|")})
@@ -83,16 +86,30 @@ function warn(message: string): void {
   console.error(`${PROG}: warning: ${message}`);
 }
 
-function defaultConfigPath(): string {
+function defaultConfigDir(): string {
   const base = process.env.XDG_CONFIG_HOME || resolve(homedir(), ".config");
-  const path = resolve(base, "outmute", "config.json");
+  const dir = resolve(base, "outmute");
   // Fall back to the pre-rename location so existing configs keep working.
-  const legacy = resolve(base, "clockify-invoice", "config.json");
-  if (!existsSync(path) && existsSync(legacy)) return legacy;
-  return path;
+  const legacyDir = resolve(base, "clockify-invoice");
+  if (!existsSync(dir) && existsSync(legacyDir)) return legacyDir;
+  return dir;
 }
 
-const CONFIG_TEMPLATE: unknown = {
+/** Where to read the config from: prefer TOML, but keep reading an existing
+ * JSON config left over from before this tool switched formats. */
+function defaultConfigPath(): string {
+  const dir = defaultConfigDir();
+  const toml = resolve(dir, "config.toml");
+  if (existsSync(toml)) return toml;
+  const json = resolve(dir, "config.json");
+  return existsSync(json) ? json : toml;
+}
+
+function isJsonConfigPath(path: string): boolean {
+  return path.toLowerCase().endsWith(".json");
+}
+
+const JSON_CONFIG_TEMPLATE: unknown = {
   from: {
     name: "Your Name",
     lines: ["123 Example Street", "Springfield, ST 00000", "you@example.com"],
@@ -101,6 +118,49 @@ const CONFIG_TEMPLATE: unknown = {
   invoice: { ...DEFAULT_CONFIG.invoice, fonts: { ...DEFAULT_CONFIG.invoice.fonts } },
   rates: { default: 100 },
 };
+
+const defaultInvoice = DEFAULT_CONFIG.invoice;
+const TOML_CONFIG_TEMPLATE = `\
+# outmute config — every value here is used whenever a flag doesn't override it.
+
+[from]
+name = "Your Name"
+lines = ["123 Example Street", "Springfield, ST 00000", "you@example.com"]
+
+[to]
+name = "Client, Inc."
+lines = ["456 Client Avenue", "Métropole, ST 11111"]
+
+[invoice]
+# Default invoice number is "<numberPrefix><last entry date as YYYYMMDD>".
+numberPrefix = "${defaultInvoice.numberPrefix}"
+# Due date = issue date + netDays.
+netDays = ${defaultInvoice.netDays}
+# Currency symbol; empty string takes it from the CSV, else "$".
+currency = "${defaultInvoice.currency}"
+# 0 disables the tax line.
+taxPercent = ${defaultInvoice.taxPercent}
+taxLabel = "${defaultInvoice.taxLabel}"
+# e.g. 15 rounds each line item's hours up to the quarter hour.
+roundUpMinutes = ${defaultInvoice.roundUpMinutes}
+# May contain a {net_days} placeholder.
+notes = "${defaultInvoice.notes}"
+# Accent color, #rrggbb.
+accent = "${defaultInvoice.accent}"
+paper = "${defaultInvoice.paper}" # letter | a4
+
+# Typeface per slot — heading styles the title, party names and section
+# labels, body everything else. Each is sans | serif | mono, or your own
+# TTF/OTF file(s): { regular = "path/to/regular.ttf", bold = "path/to/bold.ttf" }
+# (bold optional; paths are relative to this file).
+[invoice.fonts]
+heading = "sans"
+body = "sans"
+
+# Hourly rates by Clockify project name; "default" covers everything else.
+[rates]
+default = 100
+`;
 
 interface Answers {
   serve: boolean;
@@ -173,14 +233,23 @@ function parseCliArgs(): { answers: Answers; overrides: Record<string, string | 
     process.exit(0);
   }
 
-  const configPath = values.config ? resolve(values.config) : defaultConfigPath();
   if (values.init) {
-    if (existsSync(configPath)) die(`${configPath} already exists; not overwriting`);
-    mkdirSync(dirname(configPath), { recursive: true });
-    writeFileSync(configPath, JSON.stringify(CONFIG_TEMPLATE, null, 2) + "\n");
-    console.log(`Wrote ${configPath} — edit it, then run: ${PROG} report.csv`);
+    // Bare --init always targets the new TOML path, even if an old JSON
+    // config already exists alongside it — that's how you opt into TOML.
+    const initPath = values.config
+      ? resolve(values.config)
+      : resolve(defaultConfigDir(), "config.toml");
+    if (existsSync(initPath)) die(`${initPath} already exists; not overwriting`);
+    mkdirSync(dirname(initPath), { recursive: true });
+    const contents = isJsonConfigPath(initPath)
+      ? JSON.stringify(JSON_CONFIG_TEMPLATE, null, 2) + "\n"
+      : TOML_CONFIG_TEMPLATE;
+    writeFileSync(initPath, contents);
+    console.log(`Wrote ${initPath} — edit it, then run: ${PROG} report.csv`);
     process.exit(0);
   }
+
+  const configPath = values.config ? resolve(values.config) : defaultConfigPath();
 
   if (positionals.length > 1) die(`unexpected arguments: ${positionals.slice(1).join(" ")}`);
   const group = (values.group ?? "description") as GroupBy;
@@ -257,7 +326,9 @@ function loadConfigFile(
     return { config: mergeConfig({}), found: false };
   }
   try {
-    const config = mergeConfig(JSON.parse(readFileSync(path, "utf8")));
+    const text = readFileSync(path, "utf8");
+    const raw = isJsonConfigPath(path) ? JSON.parse(text) : parseToml(text);
+    const config = mergeConfig(raw);
     // Custom font paths in a config file are relative to that file.
     config.invoice.fonts = anchorFontPaths(config.invoice.fonts, (p) => resolve(dirname(path), p));
     return { config, found: true };
@@ -547,7 +618,10 @@ async function main(): Promise<void> {
 
   if (answers.saveConfig) {
     mkdirSync(dirname(answers.configPath), { recursive: true });
-    writeFileSync(answers.configPath, JSON.stringify(config, null, 2) + "\n");
+    const contents = isJsonConfigPath(answers.configPath)
+      ? JSON.stringify(config, null, 2) + "\n"
+      : stringifyToml(config);
+    writeFileSync(answers.configPath, contents);
     console.log(`Saved config to ${answers.configPath}`);
   }
 
