@@ -15,7 +15,9 @@ keep this file updated in the same commit/PR.
 - Tooling: **oxfmt** (format), **oxlint** (lint), **typescript@7** (GA
   2026-07-08; the native compiler is standard `tsc` in the `typescript`
   package), **lefthook** (hooks). Hook split: pre-commit = oxfmt + oxlint on
-  staged files; pre-push = `tsc --noEmit` + `bun test`. No commit-msg hook.
+  staged files; pre-push = `tsc --noEmit` + `bun test --pass-with-no-tests`
+  (the flag tolerates the test-free window before Session C lands). No
+  commit-msg hook.
 - Tests: **bun test**, colocated `src/**/*.test.ts`, pure core logic only
   (no PDF-content, CLI-interaction, or visual tests yet). No coverage gate.
   Test files are excluded from binaries automatically (only cli.ts's import
@@ -61,17 +63,18 @@ keep this file updated in the same commit/PR.
 
 ## Session B — tooling + compliance (model: mid)
 
-- [ ] Add devDeps: oxfmt, oxlint, `typescript@^7`, lefthook (`bun add -d`).
+- [x] Add devDeps: oxfmt, oxlint, `typescript@^7`, lefthook (`bun add -d`).
       Verify `tsc --noEmit` still passes under TS 7 before anything else;
       fix any TS7 divergences (expected: none or trivial).
-- [ ] Configure oxfmt and oxlint (config files at repo root). Start from
+- [x] Configure oxfmt and oxlint (config files at repo root). Start from
       defaults; use judgment to adjust rules to fit the existing style rather
       than rewriting the codebase to fit maximal rules. Ignore `dist/`,
       `node_modules/`, `src/fonts/`.
-- [ ] `lefthook.yml`: pre-commit runs oxfmt (write, staged files) + oxlint;
-      pre-push runs `tsc --noEmit` + `bun test`. Add `"prepare": "lefthook install"`
+- [x] `lefthook.yml`: pre-commit runs oxfmt (write, staged files) + oxlint;
+      pre-push runs `tsc --noEmit` + `bun test --pass-with-no-tests` (no
+      test files exist until Session C). Add `"prepare": "lefthook install"`
       or document `bunx lefthook install` in README.
-- [ ] Add package.json scripts: `fmt`, `fmt:check`, `lint`, `test` (keep
+- [x] Add package.json scripts: `fmt`, `fmt:check`, `lint`, `test` (keep
       existing `typecheck`).
 - [ ] Run oxfmt + oxlint over the repo; commit the compliance changeset.
       Verify after: `bun run typecheck` passes and
