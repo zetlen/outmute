@@ -25,6 +25,20 @@ Downloads the latest release binary for your platform, verifies it against
 update. On Windows, grab the `windows-x64` zip from the
 [releases page](https://github.com/zetlen/outmute/releases).
 
+Tool managers that install directly from GitHub releases also work — the
+release assets follow the `<name>-<version>-<os>-<arch>` convention they
+expect:
+
+```sh
+mise use -g github:zetlen/outmute                  # mise
+ubi --project zetlen/outmute --in ~/.local/bin     # ubi
+eget zetlen/outmute                                # eget
+```
+
+Note for mise: its `minimum_release_age` guard hides brand-new releases, so
+installing on the day of a release needs `MISE_MINIMUM_RELEASE_AGE=0` (or
+just wait a day).
+
 ## 1. Web page (everything stays in your browser)
 
 ```sh
