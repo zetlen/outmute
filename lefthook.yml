@@ -1,3 +1,8 @@
+# outmute doesn't use Git LFS; skip_lfs avoids lefthook silently invoking
+# `git lfs pre-push` (and swallowing its failures) whenever git-lfs happens
+# to be installed/configured on the host machine. See evilmartians/lefthook#356.
+skip_lfs: true
+
 pre-commit:
   commands:
     fmt:
