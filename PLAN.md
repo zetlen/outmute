@@ -146,7 +146,7 @@ there's no matrix): `fmt`, `lint`, `typecheck`, `test`, `pr-title`.
 
 ## Session F — release workflow + install.sh (model: mid/strong; highest retry risk)
 
-- [ ] `.github/workflows/release.yml` triggered by published releases (and
+- [x] `.github/workflows/release.yml` triggered by published releases (and
       `workflow_dispatch` for rehearsal). Jobs:
   1. Build: for each target (`bun-linux-x64`, `bun-darwin-arm64`,
      `bun-windows-x64`), `bun build --compile --target=... src/cli.ts` with
@@ -157,10 +157,14 @@ there's no matrix): `fmt`, `lint`, `typecheck`, `test`, `pr-title`.
      `install.sh` (and a `.nojekyll`) into it, deploy via
      actions/upload-pages-artifact + actions/deploy-pages. Enable Pages
      (source: GitHub Actions) via `gh api` if not already.
+     Done in Session F: Pages enabled (`build_type: workflow`), and the
+     auto-created `github-pages` environment — which allowed only branch
+     `main` — got a `v*` **tag** deployment-branch policy, without which
+     release-triggered runs (ref = `refs/tags/vX.Y.Z`) cannot deploy.
 - [x] `install.sh` at repo root per the decisions ledger. Test locally by
       sourcing its platform-detect + download logic against a fake asset dir,
       and shellcheck it.
-- [ ] PR titles: `ci: build release binaries and deploy pages on release` and
+- [x] PR titles: `ci: build release binaries and deploy pages on release` and
       `feat: curl-able install script` (separate PRs or one; keep titles
       conventional — `feat` makes release-please include it in the changelog).
 
