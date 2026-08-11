@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.1](https://github.com/zetlen/outmute/compare/v2.1.0...v2.1.1) (2026-08-11)
+
+
+### Bug Fixes
+
+* **cli:** make --install-skill work from compiled binaries ([#22](https://github.com/zetlen/outmute/issues/22)) ([4f6e863](https://github.com/zetlen/outmute/commit/4f6e863e8565206787bc71e9aa36b067dca3e259))
+
 ## [2.1.0](https://github.com/zetlen/outmute/compare/v2.0.1...v2.1.0) (2026-08-11)
 
 
