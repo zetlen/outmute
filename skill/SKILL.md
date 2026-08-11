@@ -5,7 +5,7 @@ description: Generate a PDF invoice from a Clockify Detailed report CSV export. 
 
 # Generating invoices from Clockify CSVs
 
-The tool lives at `{{REPO}}` and runs with Bun. It turns a Clockify
+The tool is invoked as `{{CMD}}`. It turns a Clockify
 "Detailed report" CSV export into a PDF invoice.
 
 If the user has no CSV yet, tell them to export one in Clockify:
@@ -16,7 +16,7 @@ If the user has no CSV yet, tell them to export one in Clockify:
 Always run non-interactively (`--no-input`) and pass everything as flags:
 
 ```sh
-bun run {{REPO}}/src/cli.ts <report.csv> --no-input -o <output.pdf> [flags]
+{{CMD}} <report.csv> --no-input -o <output.pdf> [flags]
 ```
 
 Saved defaults (sender, client, rates, tax…) live in

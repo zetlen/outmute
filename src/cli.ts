@@ -20,6 +20,7 @@ import { DEFAULT_CONFIG, mergeConfig, type GroupBy, type InvoiceConfig } from ".
 import { anchorFontPaths, FontError, resolveFontSlots } from "./core/fonts";
 import { VERSION } from "./core/version";
 import index from "./web/index.html";
+import skillTemplate from "../skill/SKILL.md" with { type: "text" };
 
 const PROG = "outmute";
 const GROUPS: GroupBy[] = ["description", "project", "day", "entry"];
@@ -312,10 +313,13 @@ function skillPath(): string {
 }
 
 function installSkill(): void {
-  const template = readFileSync(resolve(import.meta.dir, "../skill/SKILL.md"), "utf8");
+  // In a compiled binary, sources live in Bun's virtual filesystem where repo
+  // paths don't exist — the skill must invoke the binary itself instead.
+  const compiled = import.meta.dir.includes("$bunfs") || import.meta.dir.includes("~BUN");
+  const cmd = compiled ? process.execPath : `bun run ${resolve(import.meta.dir, "cli.ts")}`;
   const target = skillPath();
   mkdirSync(dirname(target), { recursive: true });
-  writeFileSync(target, template.replaceAll("{{REPO}}", resolve(import.meta.dir, "..")));
+  writeFileSync(target, skillTemplate.replaceAll("{{CMD}}", cmd));
   console.log(`Installed Claude skill at ${target}`);
 }
 
