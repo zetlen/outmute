@@ -4,8 +4,11 @@ import { computeInvoice } from "../core/invoice";
 import { renderInvoicePdf } from "../core/pdf";
 import { fmtDay, fmtHours, money } from "../core/format";
 import { mergeConfig, type GroupBy } from "../core/types";
+import { VERSION } from "../core/version";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+
+if (VERSION) $<HTMLSpanElement>("version").textContent = ` — outmute v${VERSION}`;
 
 const dropzone = $<HTMLDivElement>("dropzone");
 const dropzoneText = $<HTMLDivElement>("dropzone-text");

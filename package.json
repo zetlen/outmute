@@ -10,7 +10,7 @@
   "scripts": {
     "cli": "bun run src/cli.ts",
     "web": "bun ./src/web/index.html",
-    "build:web": "bun build ./src/web/index.html --outdir=dist --minify",
+    "build:web": "bun build ./src/web/index.html --outdir=dist --minify --define OUTMUTE_VERSION=\\\"$npm_package_version\\\"",
     "typecheck": "tsc --noEmit",
     "fmt": "oxfmt --write .",
     "fmt:check": "oxfmt --check .",

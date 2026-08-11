@@ -17,10 +17,19 @@ import { computeInvoice, InvoiceError } from "./core/invoice";
 import { renderInvoicePdf } from "./core/pdf";
 import { fmtDay, fmtHours, money, symbolForCurrency } from "./core/format";
 import { DEFAULT_CONFIG, mergeConfig, type GroupBy, type InvoiceConfig } from "./core/types";
+import { VERSION } from "./core/version";
 import index from "./web/index.html";
 
 const PROG = "outmute";
 const GROUPS: GroupBy[] = ["description", "project", "day", "entry"];
+
+/** VERSION is injected via --define for compiled binaries; running uncompiled
+ * (`bun run src/cli.ts`) falls back to reading it from package.json. */
+function getVersion(): string {
+  if (VERSION) return VERSION;
+  const pkg = JSON.parse(readFileSync(resolve(import.meta.dir, "../package.json"), "utf8"));
+  return pkg.version;
+}
 
 const USAGE = `\
 ${PROG} — generate a PDF invoice from a time-tracking report (e.g. a Clockify Detailed CSV)
@@ -31,6 +40,7 @@ Usage:
   ${PROG} serve [--port <n>]      host the browser version at localhost (default port 4520)
   ${PROG} --init                  write a starter config and exit
   ${PROG} --install-skill         install the Claude Code skill and exit
+  ${PROG} --version               print the version and exit
 
 Options:
   -o, --output <path>       output PDF path (default: <number>.pdf)
@@ -117,6 +127,7 @@ function parseCliArgs(): { answers: Answers; overrides: Record<string, string | 
         appendix: { type: "boolean" },
         init: { type: "boolean" },
         help: { type: "boolean", short: "h" },
+        version: { type: "boolean" },
         "no-input": { type: "boolean" },
         "save-config": { type: "boolean" },
         "install-skill": { type: "boolean" },
@@ -145,6 +156,11 @@ function parseCliArgs(): { answers: Answers; overrides: Record<string, string | 
 
   if (values.help) {
     console.log(USAGE);
+    process.exit(0);
+  }
+
+  if (values.version) {
+    console.log(getVersion());
     process.exit(0);
   }
 

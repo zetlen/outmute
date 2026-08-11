@@ -113,7 +113,7 @@ keep this file updated in the same commit/PR.
 
 ## Session D — version plumbing + CI (model: mid)
 
-- [ ] Version injection: `--define OUTMUTE_VERSION=...` (from package.json) in
+- [x] Version injection: `--define OUTMUTE_VERSION=...` (from package.json) in
       compiled/web builds, with a runtime fallback for `bun run` dev use
       (read package.json). Add `--version` flag to the CLI and a small footer
       on the web page (`outmute v{version}`). Same constant for both.
