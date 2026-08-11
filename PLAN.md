@@ -177,7 +177,7 @@ there's no matrix): `fmt`, `lint`, `typecheck`, `test`, `pr-title`.
       https://zetlen.github.io/outmute with the version in the footer;
       `curl -fsSL https://zetlen.github.io/outmute/install.sh | sh` installs a
       working binary on this machine (`outmute --version` → 2.0.0).
-- [ ] release-please via the googleapis/release-please-action workflow on
+- [x] release-please via the googleapis/release-please-action workflow on
       pushes to main, manifest mode:
       `.release-please-manifest.json` = `{".": "2.0.0"}`;
       `release-please-config.json` with `release-type: node`,
@@ -189,6 +189,17 @@ there's no matrix): `fmt`, `lint`, `typecheck`, `test`, `pr-title`.
       release-please's GITHUB_TOKEN-created releases (GitHub suppresses
       workflow-triggering-workflows), switch release-please to a PAT or add
       `workflow_dispatch` chaining — this is the known gotcha to check.
+      Hit in practice, and it was worse than the anticipated gotcha: this
+      repo disallows Actions-authored PRs at all (repo setting "Allow GitHub
+      Actions to create and approve pull requests" is off), so the default
+      GITHUB_TOKEN couldn't even open the version-bump PR, let alone trigger
+      release.yml on the release it would publish. Fixed by switching to a
+      fine-grained PAT (repo-scoped to zetlen/outmute; Contents: read/write,
+      Pull requests: read/write, no approval scope) stored as the
+      `RELEASE_PLEASE_TOKEN` repo secret and passed as the action's `token`
+      input — this resolves both the PR-creation block and the
+      release-doesn't-trigger-release.yml gotcha in one fix, since both stem
+      from GitHub treating GITHUB_TOKEN-authored writes specially.
 - [ ] Verify end-to-end: merge a `fix:`-titled PR → release-please PR appears
       → merge it → v2.0.1 release with assets + Pages deploy.
 - [ ] When everything works, delete this PLAN.md in the final PR.
