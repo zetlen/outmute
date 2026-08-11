@@ -317,3 +317,41 @@ describe("cli config precedence", () => {
     expect((await inspectPdf(out)).title).toBe(`Invoice HOME-${LAST_DAY}`);
   }, 30_000);
 });
+
+describe("cli --install-skill", () => {
+  test("installs the skill with a bun-run command when run from source", () => {
+    const result = runCli("--install-skill");
+    expect(result.code).toBe(0);
+
+    const skill = readFileSync(join(home, ".claude", "skills", "outmute", "SKILL.md"), "utf8");
+    expect(skill).not.toContain("{{CMD}}");
+    expect(skill).toContain(`bun run ${CLI}`);
+  }, 30_000);
+
+  test("installs the skill pointing at the binary itself when compiled", () => {
+    // Regression: the compiled binary used to readFileSync a repo-relative
+    // SKILL.md that only exists on disk, dying with ENOENT on /$bunfs paths.
+    const bin = join(home, "outmute-compiled");
+    const build = Bun.spawnSync({
+      cmd: [process.execPath, "build", "--compile", CLI, "--outfile", bin],
+      cwd: REPO,
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    expect(build.exitCode).toBe(0);
+
+    const proc = Bun.spawnSync({
+      cmd: [bin, "--install-skill"],
+      cwd: home,
+      env: { PATH: process.env.PATH ?? "", HOME: home, XDG_CONFIG_HOME: join(home, ".config") },
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    expect(proc.stderr.toString()).toBe("");
+    expect(proc.exitCode).toBe(0);
+
+    const skill = readFileSync(join(home, ".claude", "skills", "outmute", "SKILL.md"), "utf8");
+    expect(skill).toContain(bin);
+    expect(skill).not.toContain("bun run");
+  }, 60_000);
+});
