@@ -11,10 +11,11 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { homedir } from "node:os";
 import { createInterface } from "node:readline";
-import { CsvError, readEntries, type ParsedReport } from "./core/csv";
+import { AdapterError, adapterNames, parseTimesheet } from "./adapters";
+import type { Timesheet } from "./core/timesheet";
 import { computeInvoice, InvoiceError } from "./core/invoice";
 import { renderInvoicePdf } from "./core/pdf";
-import { fmtDay, fmtHours, money } from "./core/format";
+import { fmtDay, fmtHours, money, symbolForCurrency } from "./core/format";
 import { DEFAULT_CONFIG, mergeConfig, type GroupBy, type InvoiceConfig } from "./core/types";
 
 const PROG = "clockify-invoice";
@@ -35,6 +36,7 @@ Options:
   -c, --config <path>       JSON config file (default: ~/.config/clockify-invoice/config.json)
   -n, --number <id>         invoice number (default: prefix + last entry date)
   -g, --group <mode>        line item grouping: description|project|day|entry (default: description)
+      --input-format <name> time report format (default: auto-detect; formats: ${adapterNames.join("|")})
       --all                 include entries marked non-billable
       --appendix            append a per-entry detail table on its own page
       --no-input            never prompt; fail if required info is missing
@@ -83,6 +85,7 @@ interface Answers {
   port: number;
   installSkill: boolean;
   csvPath?: string;
+  inputFormat?: string;
   output?: string;
   number?: string;
   group: GroupBy;
@@ -112,6 +115,7 @@ function parseCliArgs(): { answers: Answers; overrides: Record<string, string | 
         "no-input": { type: "boolean" },
         "save-config": { type: "boolean" },
         "install-skill": { type: "boolean" },
+        "input-format": { type: "string" },
         port: { type: "string" },
         font: { type: "string" },
         "from-name": { type: "string" },
@@ -166,6 +170,9 @@ function parseCliArgs(): { answers: Answers; overrides: Record<string, string | 
   if (values.port && !(Number.isInteger(Number(values.port)) && Number(values.port) > 0)) {
     die(`invalid --port ${JSON.stringify(values.port)}; expected a port number`);
   }
+  if (values["input-format"] && !adapterNames.includes(values["input-format"])) {
+    die(`invalid --input-format ${JSON.stringify(values["input-format"])}; use ${adapterNames.join("|")}`);
+  }
 
   return {
     answers: {
@@ -173,6 +180,7 @@ function parseCliArgs(): { answers: Answers; overrides: Record<string, string | 
       port: Number(values.port ?? 4520),
       installSkill: Boolean(values["install-skill"]),
       csvPath: positionals[0] === "serve" ? undefined : positionals[0],
+      inputFormat: values["input-format"],
       output: values.output,
       number: values.number,
       group,
@@ -331,16 +339,17 @@ const numberValidator = (raw: string) =>
 async function loadCsvInteractive(
   rl: Prompter,
   initialPath: string | undefined,
-): Promise<{ path: string; report: ParsedReport }> {
+  format: string | undefined,
+): Promise<{ path: string; report: Timesheet }> {
   let path = initialPath;
   for (;;) {
     if (!path) {
-      path = await ask(rl, "Path to the Clockify CSV export", {
+      path = await ask(rl, "Path to the time report CSV (e.g. a Clockify export)", {
         validate: (raw) => (raw ? null : "a CSV path is required"),
       });
     }
     try {
-      const report = loadCsv(path);
+      const report = loadCsv(path, format);
       const days = report.entries.map((e) => e.day).sort();
       console.log(
         `    ✓ ${report.entries.length} entries, ${fmtDay(days[0])} – ${fmtDay(days[days.length - 1])}`,
@@ -353,12 +362,12 @@ async function loadCsvInteractive(
   }
 }
 
-function loadCsv(path: string): ParsedReport {
+function loadCsv(path: string, format: string | undefined): Timesheet {
   if (!existsSync(path)) throw new Error(`no such file: ${path}`);
   try {
-    return readEntries(readFileSync(path, "utf8"));
+    return parseTimesheet(readFileSync(path, "utf8"), format);
   } catch (err) {
-    if (err instanceof CsvError) throw err;
+    if (err instanceof AdapterError) throw err;
     throw new Error(`couldn't read ${path}: ${(err as Error).message}`);
   }
 }
@@ -380,7 +389,7 @@ async function main(): Promise<void> {
   );
   applyOverrides(config, overrides);
 
-  let report: ParsedReport;
+  let report: Timesheet;
   let rl: Prompter | undefined;
 
   if (answers.interactive) {
@@ -388,7 +397,7 @@ async function main(): Promise<void> {
     console.log(`${PROG} — PDF invoice from a Clockify Detailed report CSV\n`);
     if (configFound) console.log(`  Using config: ${answers.configPath}\n`);
 
-    const loaded = await loadCsvInteractive(rl, answers.csvPath);
+    const loaded = await loadCsvInteractive(rl, answers.csvPath, answers.inputFormat);
     answers.csvPath = loaded.path;
     report = loaded.report;
     console.log();
@@ -404,7 +413,7 @@ async function main(): Promise<void> {
     });
     config.to.lines = await askLines(rl, "Client address", config.to.lines);
 
-    const needsRate = report.entries.some((e) => e.billable && !(e.rate > 0));
+    const needsRate = report.entries.some((e) => e.billable && e.rate === undefined);
     if (needsRate && !(config.rates["default"] > 0)) {
       config.rates["default"] = Number(
         await ask(rl, "Default hourly rate (some entries have no billable rate)", {
@@ -413,7 +422,7 @@ async function main(): Promise<void> {
       );
     }
     config.invoice.currency = await ask(rl, "Currency symbol", {
-      fallback: config.invoice.currency || report.currency || "$",
+      fallback: config.invoice.currency || symbolForCurrency(report.currency) || "$",
     });
     config.invoice.taxPercent = Number(
       await ask(rl, "Tax percent (0 for none)", {
@@ -432,7 +441,7 @@ async function main(): Promise<void> {
       die("csv file is required in non-interactive mode (or run with no --no-input on a terminal)");
     }
     try {
-      report = loadCsv(answers.csvPath);
+      report = loadCsv(answers.csvPath, answers.inputFormat);
     } catch (err) {
       die((err as Error).message);
     }
@@ -440,17 +449,12 @@ async function main(): Promise<void> {
 
   let invoice;
   try {
-    invoice = computeInvoice(
-      report.entries,
-      config,
-      {
-        group: answers.group,
-        includeNonBillable: answers.all,
-        appendix: answers.appendix,
-        number: answers.number,
-      },
-      report.currency,
-    );
+    invoice = computeInvoice(report, config, {
+      group: answers.group,
+      includeNonBillable: answers.all,
+      appendix: answers.appendix,
+      number: answers.number,
+    });
   } catch (err) {
     if (err instanceof InvoiceError) die(`${err.message} (use --all to include non-billable entries)`);
     throw err;

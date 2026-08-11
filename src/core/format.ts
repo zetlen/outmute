@@ -1,5 +1,16 @@
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: "$", EUR: "€", GBP: "£", CAD: "CA$", AUD: "A$",
+  NZD: "NZ$", INR: "₹", JPY: "¥", CHF: "CHF", SEK: "kr",
+};
+
+/** Display symbol for an ISO 4217 code; unknown codes render as the code itself. */
+export function symbolForCurrency(code: string | undefined): string | undefined {
+  if (!code) return undefined;
+  return CURRENCY_SYMBOLS[code] ?? code;
+}
+
 /** "2026-08-05" -> "Aug 5, 2026" */
 export function fmtDay(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);

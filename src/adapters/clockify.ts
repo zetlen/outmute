@@ -1,12 +1,6 @@
-import type { Entry } from "./types";
-import { parseNumber, toISO } from "./format";
-
-export class CsvError extends Error {}
-
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  USD: "$", EUR: "€", GBP: "£", CAD: "CA$", AUD: "A$",
-  NZD: "NZ$", INR: "₹", JPY: "¥", CHF: "CHF", SEK: "kr",
-};
+import type { Timesheet, TimeEntry } from "../core/timesheet";
+import { parseNumber, toISO } from "../core/format";
+import { AdapterError, type Adapter } from "./adapter";
 
 /** RFC 4180 CSV parser: quoted fields, embedded quotes, newlines in fields. */
 export function parseCsv(text: string): string[][] {
@@ -75,7 +69,7 @@ function pickDateFormat(rawDates: string[]): DateFormat {
   for (const fmt of DATE_FORMATS) {
     if (rawDates.every((raw) => tryParseDate(raw, fmt) !== null)) return fmt;
   }
-  throw new CsvError(`unrecognized date format in CSV (e.g. ${JSON.stringify(rawDates[0])})`);
+  throw new AdapterError(`unrecognized date format in CSV (e.g. ${JSON.stringify(rawDates[0])})`);
 }
 
 function parseDuration(row: string[], decimalCol: number, hmsCol: number): number {
@@ -85,35 +79,35 @@ function parseDuration(row: string[], decimalCol: number, hmsCol: number): numbe
   const raw = (row[hmsCol] ?? "").trim();
   const parts = raw.split(":");
   if (parts.length !== 3 || parts.some((p) => !/^\d+$/.test(p))) {
-    throw new CsvError(`can't parse duration ${JSON.stringify(raw)}`);
+    throw new AdapterError(`can't parse duration ${JSON.stringify(raw)}`);
   }
   const [h, m, s] = parts.map(Number);
   return h + m / 60 + s / 3600;
 }
 
-export interface ParsedReport {
-  entries: Entry[];
-  /** Currency symbol inferred from a "Billable Rate (XXX)" header, if any. */
-  currency?: string;
+function columns(fields: string[]) {
+  return {
+    date: findColumn(fields, "Start Date", "Date"),
+    hms: findColumn(fields, "Duration (h)"),
+    decimal: findColumn(fields, "Duration (decimal)"),
+  };
 }
 
-/** Parse the text of a Clockify Detailed report CSV into time entries. */
-export function readEntries(text: string): ParsedReport {
+/** Parse the text of a Clockify Detailed report CSV into a Timesheet. */
+function parse(text: string): Timesheet {
   const table = parseCsv(text);
   const fields = table[0] ?? [];
   const rows = table.slice(1).filter((row) => row.some((v) => (v ?? "").trim()));
 
-  const dateCol = findColumn(fields, "Start Date", "Date");
-  const hmsCol = findColumn(fields, "Duration (h)");
-  const decimalCol = findColumn(fields, "Duration (decimal)");
+  const { date: dateCol, hms: hmsCol, decimal: decimalCol } = columns(fields);
   if (dateCol === -1 || (hmsCol === -1 && decimalCol === -1)) {
-    throw new CsvError(
+    throw new AdapterError(
       "this doesn't look like a Clockify Detailed report CSV " +
         "(need a Start Date and a Duration column). In Clockify: " +
         "Reports > Detailed > Export > Save as CSV.",
     );
   }
-  if (!rows.length) throw new CsvError("CSV has no time entries");
+  if (!rows.length) throw new AdapterError("CSV has no time entries");
 
   const projectCol = findColumn(fields, "Project");
   const descCol = findColumn(fields, "Description");
@@ -123,20 +117,35 @@ export function readEntries(text: string): ParsedReport {
   let currency: string | undefined;
   if (rateCol !== -1) {
     const match = /\(([A-Z]{3})\)/.exec(fields[rateCol]);
-    if (match) currency = CURRENCY_SYMBOLS[match[1]];
+    if (match) currency = match[1];
   }
 
   const fmt = pickDateFormat(rows.map((row) => (row[dateCol] ?? "").trim()));
-  const entries: Entry[] = rows.map((row) => ({
-    day: tryParseDate((row[dateCol] ?? "").trim(), fmt)!,
-    project: projectCol !== -1 ? (row[projectCol] ?? "").trim() : "",
-    description: descCol !== -1 ? (row[descCol] ?? "").trim() : "",
-    hours: parseDuration(row, decimalCol, hmsCol),
-    rate: rateCol !== -1 ? parseNumber(row[rateCol]) : 0,
-    billable:
-      billableCol !== -1
-        ? ["yes", "true", "1"].includes((row[billableCol] ?? "yes").trim().toLowerCase())
-        : true,
-  }));
-  return { entries, currency };
+  const entries: TimeEntry[] = rows.map((row) => {
+    const rate = rateCol !== -1 ? parseNumber(row[rateCol]) : 0;
+    return {
+      day: tryParseDate((row[dateCol] ?? "").trim(), fmt)!,
+      project: projectCol !== -1 ? (row[projectCol] ?? "").trim() : "",
+      description: descCol !== -1 ? (row[descCol] ?? "").trim() : "",
+      hours: parseDuration(row, decimalCol, hmsCol),
+      // Clockify leaves the rate blank/0 when none is set; treat that as "unpriced".
+      ...(rate > 0 ? { rate } : {}),
+      billable:
+        billableCol !== -1
+          ? ["yes", "true", "1"].includes((row[billableCol] ?? "yes").trim().toLowerCase())
+          : true,
+    };
+  });
+  return { source: "clockify", entries, currency };
 }
+
+export const clockify: Adapter = {
+  name: "clockify",
+  /** A Clockify Detailed report has a Start Date and a Duration column in its header row. */
+  detect(text: string): boolean {
+    const header = parseCsv(text.slice(0, 4096))[0] ?? [];
+    const { date, hms, decimal } = columns(header);
+    return date !== -1 && (hms !== -1 || decimal !== -1);
+  },
+  parse,
+};

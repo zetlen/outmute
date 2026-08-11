@@ -1,4 +1,5 @@
-import { readEntries, type ParsedReport } from "../core/csv";
+import { parseTimesheet } from "../adapters";
+import type { Timesheet } from "../core/timesheet";
 import { computeInvoice } from "../core/invoice";
 import { renderInvoicePdf } from "../core/pdf";
 import { fmtDay, fmtHours, money } from "../core/format";
@@ -14,7 +15,7 @@ const form = $<HTMLFormElement>("form");
 const generate = $<HTMLButtonElement>("generate");
 const status = $<HTMLDivElement>("status");
 
-let report: ParsedReport | null = null;
+let report: Timesheet | null = null;
 
 function showStatus(kind: "ok" | "err", message: string): void {
   status.className = kind;
@@ -29,7 +30,7 @@ function clearStatus(): void {
 async function acceptFile(file: File): Promise<void> {
   clearStatus();
   try {
-    const parsed = readEntries(await file.text());
+    const parsed = parseTimesheet(await file.text());
     report = parsed;
     const days = parsed.entries.map((e) => e.day).sort();
     dropzone.classList.add("loaded");
@@ -129,17 +130,12 @@ form.addEventListener("submit", async (e) => {
   generate.disabled = true;
   generate.textContent = "Generating…";
   try {
-    const invoice = computeInvoice(
-      report.entries,
-      config,
-      {
-        group: val("group") as GroupBy,
-        includeNonBillable: $<HTMLInputElement>("all").checked,
-        appendix: $<HTMLInputElement>("appendix").checked,
-        number: val("number") || undefined,
-      },
-      report.currency,
-    );
+    const invoice = computeInvoice(report, config, {
+      group: val("group") as GroupBy,
+      includeNonBillable: $<HTMLInputElement>("all").checked,
+      appendix: $<HTMLInputElement>("appendix").checked,
+      number: val("number") || undefined,
+    });
     const pdf = await renderInvoicePdf(invoice);
     const filename = `${invoice.number.replace(/[^A-Za-z0-9._-]/g, "_")}.pdf`;
     const url = URL.createObjectURL(new Blob([pdf as BlobPart], { type: "application/pdf" }));

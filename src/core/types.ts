@@ -1,15 +1,5 @@
 import type { FontFamily } from "./fonts";
-
-/** A single time entry from the Clockify CSV. Days are ISO "YYYY-MM-DD" strings. */
-export interface Entry {
-  day: string;
-  project: string;
-  description: string;
-  hours: number;
-  /** 0 means "not in CSV, resolve from config rates". */
-  rate: number;
-  billable: boolean;
-}
+import type { TimeEntry } from "./timesheet";
 
 /** One invoice line item (a group of entries billed at the same rate). */
 export interface Line {
@@ -72,7 +62,7 @@ export interface Invoice {
   config: InvoiceConfig;
   lines: Line[];
   /** The billed entries, for the appendix. */
-  entries: Entry[];
+  entries: TimeEntry[];
   number: string;
   issued: string;
   due: string;
