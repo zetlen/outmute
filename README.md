@@ -86,6 +86,23 @@ fallback across subsets (serif/mono additionally fall back to Inter for
 glyphs they lack, e.g. ₹); only the glyphs actually used are embedded, so
 PDFs stay small. Scripts outside that coverage (e.g. CJK) render as `?`.
 
+## Tests
+
+```bash
+bun test                   # unit + CLI integration tests
+bun run test:e2e:install   # one-time: download Chromium for Playwright
+bun run test:e2e           # browser end-to-end tests
+```
+
+`bun test` covers the adapters, invoice math, and `src/cli.test.ts`, which
+spawns the real CLI against the fixture CSVs in `test/fixtures/`. Each run gets
+a throwaway `HOME`, so the suite never reads your own
+`~/.config/outmute/config.json`.
+
+`bun run test:e2e` starts `outmute serve` and drives the page in Chromium —
+form, CSV dropzone, and Generate PDF — checking the downloaded file really is a
+PDF. Nothing in either suite touches the network.
+
 ## Claude Code skill
 
 `outmute --install-skill` installs a skill at `~/.claude/skills/outmute/` so
@@ -126,12 +143,14 @@ the rest on push):
 bun run fmt:check      # oxfmt
 bun run lint           # oxlint
 bun run typecheck      # tsc --noEmit
-bun test
+bun test               # unit + CLI integration tests
+bun run test:e2e       # Playwright browser tests (first: bun run test:e2e:install)
 ```
 
 The TTFs in `src/fonts/` are generated from the Fontsource packages by
 `bun scripts/build-fonts.ts`; re-run it after bumping a Fontsource
 dependency.
 
-Contributions land via pull request; CI runs formatting, lint, type, and test
-checks plus a conventional-commit PR title check.
+Contributions land via pull request; CI runs formatting, lint, type, unit,
+CLI-integration, and browser e2e checks plus a conventional-commit PR title
+check.
