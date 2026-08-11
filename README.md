@@ -97,3 +97,5 @@ this tool when you ask. Interactive runs also offer to install it.
 - Line items group entries by description (default), project, day, or not at
   all; totals, tax, and optional round-up-to-N-minutes match the original
   Python version (`clockifyinvoice`, kept in git history).
+- Contributions land via pull request; CI runs formatting, lint, type, and
+  test checks plus a conventional-commit PR title check.
