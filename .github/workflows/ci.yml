@@ -70,6 +70,56 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
+  # The Windows installer has no unit tests to hide behind: this runs it end to
+  # end against the published release, on both PowerShell 7 and the Windows
+  # PowerShell 5.1 that ships with Windows.
+  install-ps1:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check syntax
+        shell: pwsh
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            [string](Resolve-Path ./install.ps1), [ref]$null, [ref]$errors) | Out-Null
+          if ($errors) {
+            $errors | ForEach-Object { Write-Host "line $($_.Extent.StartLineNumber): $($_.Message)" }
+            exit 1
+          }
+
+      - name: Install with PowerShell 7
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP 'pwsh7'
+          ./install.ps1 -InstallDir $dir
+          $version = & (Join-Path $dir 'outmute.exe') --version
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "unexpected --version output: $version" }
+
+          # Re-running is the documented way to update, so it must not pile up
+          # PATH entries.
+          ./install.ps1 -InstallDir $dir
+          $entries = @([Environment]::GetEnvironmentVariable('Path', 'User') -split ';' |
+            Where-Object { $_.TrimEnd('\') -eq $dir.TrimEnd('\') })
+          if ($entries.Count -ne 1) { throw "expected 1 PATH entry for $dir, found $($entries.Count)" }
+
+      # OUTMUTE_VERSION is a fixed old release, not the current one: it has to
+      # be a version that already exists when the release PR itself is tested.
+      - name: Install with Windows PowerShell, configured by environment
+        shell: powershell
+        env:
+          OUTMUTE_INSTALL_DIR: ${{ runner.temp }}\ps51
+          OUTMUTE_NO_MODIFY_PATH: "1"
+          OUTMUTE_VERSION: "2.1.2"
+        run: |
+          .\install.ps1
+          $version = & "$env:OUTMUTE_INSTALL_DIR\outmute.exe" --version
+          if ($version -ne '2.1.2') { throw "expected 2.1.2, got $version" }
+          if ([Environment]::GetEnvironmentVariable('Path', 'User') -like "*$env:OUTMUTE_INSTALL_DIR*") {
+            throw 'OUTMUTE_NO_MODIFY_PATH did not prevent the PATH update'
+          }
+
   pr-title:
     runs-on: ubuntu-latest
     steps:
