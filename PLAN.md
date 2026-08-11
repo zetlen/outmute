@@ -157,7 +157,7 @@ there's no matrix): `fmt`, `lint`, `typecheck`, `test`, `pr-title`.
      `install.sh` (and a `.nojekyll`) into it, deploy via
      actions/upload-pages-artifact + actions/deploy-pages. Enable Pages
      (source: GitHub Actions) via `gh api` if not already.
-- [ ] `install.sh` at repo root per the decisions ledger. Test locally by
+- [x] `install.sh` at repo root per the decisions ledger. Test locally by
       sourcing its platform-detect + download logic against a fake asset dir,
       and shellcheck it.
 - [ ] PR titles: `ci: build release binaries and deploy pages on release` and
