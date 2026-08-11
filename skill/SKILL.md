@@ -1,5 +1,5 @@
 ---
-name: clockify-invoice
+name: outmute
 description: Generate a PDF invoice from a Clockify Detailed report CSV export. Use when the user asks to create, generate, or draft an invoice from Clockify data, time-tracking hours, or a Clockify CSV, or asks to bill a client for tracked time.
 ---
 
@@ -20,7 +20,8 @@ bun run {{REPO}}/src/cli.ts <report.csv> --no-input -o <output.pdf> [flags]
 ```
 
 Saved defaults (sender, client, rates, tax…) live in
-`~/.config/clockify-invoice/config.json`; read it first if it exists — then
+`~/.config/outmute/config.json` (or the pre-rename
+`~/.config/clockify-invoice/config.json`); read it first if it exists — then
 you only need flags for what's missing or different. If it doesn't exist and
 the user will invoice again, offer to save their answers with `--save-config`.
 

@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
 /**
- * clockify-invoice — generate a PDF invoice from a Clockify Detailed report CSV.
+ * outmute — generate a PDF invoice from a time-tracking report ("in voice" ⇒ "out mute").
  *
- * Interactive:      clockify-invoice
- * Non-interactive:  clockify-invoice report.csv -o invoice.pdf [flags]
- * Starter config:   clockify-invoice --init
+ * Interactive:      outmute
+ * Non-interactive:  outmute report.csv -o invoice.pdf [flags]
+ * Starter config:   outmute --init
  */
 import { parseArgs } from "node:util";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -18,11 +18,11 @@ import { renderInvoicePdf } from "./core/pdf";
 import { fmtDay, fmtHours, money, symbolForCurrency } from "./core/format";
 import { DEFAULT_CONFIG, mergeConfig, type GroupBy, type InvoiceConfig } from "./core/types";
 
-const PROG = "clockify-invoice";
+const PROG = "outmute";
 const GROUPS: GroupBy[] = ["description", "project", "day", "entry"];
 
 const USAGE = `\
-${PROG} — generate a PDF invoice from a Clockify Detailed report CSV
+${PROG} — generate a PDF invoice from a time-tracking report (e.g. a Clockify Detailed CSV)
 
 Usage:
   ${PROG}                         interactive: prompts for anything missing
@@ -33,7 +33,7 @@ Usage:
 
 Options:
   -o, --output <path>       output PDF path (default: <number>.pdf)
-  -c, --config <path>       JSON config file (default: ~/.config/clockify-invoice/config.json)
+  -c, --config <path>       JSON config file (default: ~/.config/outmute/config.json)
   -n, --number <id>         invoice number (default: prefix + last entry date)
   -g, --group <mode>        line item grouping: description|project|day|entry (default: description)
       --input-format <name> time report format (default: auto-detect; formats: ${adapterNames.join("|")})
@@ -67,7 +67,11 @@ function warn(message: string): void {
 
 function defaultConfigPath(): string {
   const base = process.env.XDG_CONFIG_HOME || resolve(homedir(), ".config");
-  return resolve(base, "clockify-invoice", "config.json");
+  const path = resolve(base, "outmute", "config.json");
+  // Fall back to the pre-rename location so existing configs keep working.
+  const legacy = resolve(base, "clockify-invoice", "config.json");
+  if (!existsSync(path) && existsSync(legacy)) return legacy;
+  return path;
 }
 
 const CONFIG_TEMPLATE: unknown = {
@@ -257,7 +261,7 @@ async function serveWeb(port: number): Promise<void> {
 }
 
 function skillPath(): string {
-  return resolve(homedir(), ".claude", "skills", "clockify-invoice", "SKILL.md");
+  return resolve(homedir(), ".claude", "skills", "outmute", "SKILL.md");
 }
 
 function installSkill(): void {
@@ -394,7 +398,7 @@ async function main(): Promise<void> {
 
   if (answers.interactive) {
     rl = new Prompter();
-    console.log(`${PROG} — PDF invoice from a Clockify Detailed report CSV\n`);
+    console.log(`${PROG} — PDF invoice from a time-tracking report\n`);
     if (configFound) console.log(`  Using config: ${answers.configPath}\n`);
 
     const loaded = await loadCsvInteractive(rl, answers.csvPath, answers.inputFormat);

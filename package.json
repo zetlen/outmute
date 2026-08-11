@@ -1,10 +1,10 @@
 {
-  "name": "clockify-invoice",
+  "name": "outmute",
   "version": "2.0.0",
-  "description": "Generate a PDF invoice from a Clockify Detailed report CSV — in the browser or from the command line.",
+  "description": "Turn time-tracking exports (Clockify, for now) into PDF invoices — in the browser or from the command line. In voice ⇒ out mute.",
   "type": "module",
   "bin": {
-    "clockify-invoice": "./src/cli.ts"
+    "outmute": "./src/cli.ts"
   },
   "scripts": {
     "cli": "bun run src/cli.ts",

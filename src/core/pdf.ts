@@ -119,7 +119,7 @@ class Painter {
 export async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   doc.setTitle(`Invoice ${inv.number}`);
-  doc.setCreator("clockify-invoice");
+  doc.setCreator("outmute");
   const { regular, bold } = await embedFamily(doc, inv.config.invoice.font);
   const accent = hexToRgb(inv.config.invoice.accent);
   const p = new Painter(doc, PAPER[inv.config.invoice.paper]);

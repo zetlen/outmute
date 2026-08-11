@@ -77,7 +77,9 @@ const FIELD_IDS = [
   "netDays", "taxPercent", "taxLabel", "roundUp", "group", "accent", "paper", "font", "notes",
 ] as const;
 const CHECKBOX_IDS = ["all", "appendix"] as const;
-const STORAGE_KEY = "clockify-invoice-form";
+const STORAGE_KEY = "outmute-form";
+// Pre-rename key, read once as a fallback so saved forms survive the rename.
+const LEGACY_STORAGE_KEY = "clockify-invoice-form";
 
 function saveForm(): void {
   const data: Record<string, string | boolean> = {};
@@ -88,7 +90,9 @@ function saveForm(): void {
 
 function restoreForm(): void {
   try {
-    const data = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
+    const data = JSON.parse(
+      localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY) ?? "{}",
+    );
     for (const id of FIELD_IDS) {
       if (typeof data[id] === "string") $<HTMLInputElement>(id).value = data[id];
     }

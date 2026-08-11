@@ -1,7 +1,9 @@
-# clockify-invoice
+# outmute
 
-Turn a Clockify "Detailed report" CSV export into a nice-looking PDF invoice.
-Clockify's invoicing is a paid feature; this is the free version.
+Turn a time-tracking report into a nice-looking PDF invoice. ("In voice" ⇒
+"out mute".) Clockify "Detailed report" CSV exports are the supported input
+format so far — Clockify's own invoicing is a paid feature; this is the free
+version. Other trackers just need an adapter (`src/adapters/`).
 
 Export the CSV in Clockify: **Reports > Detailed > Export > Save as CSV**.
 The CSV supplies dates, hours, projects, and billable rates; everything else
@@ -65,7 +67,8 @@ rounding, accent color (`--accent "#7a2048"`), typeface
 
 ## Config file
 
-Defaults live in `~/.config/clockify-invoice/config.json`
+Defaults live in `~/.config/outmute/config.json` (a pre-rename
+`~/.config/clockify-invoice/config.json` is still honored)
 (`--init` writes a starter; `-c path` uses another file; `--save-config`
 writes the effective settings back). Flags override the config; the CSV's
 "Billable Rate" column overrides the `rates` map, which is used as fallback
@@ -86,7 +89,7 @@ The TTFs in `src/fonts/` are generated from the Fontsource packages by
 ## Claude Code skill
 
 `bun run src/cli.ts --install-skill` installs a skill at
-`~/.claude/skills/clockify-invoice/` so Claude can generate invoices with
+`~/.claude/skills/outmute/` so Claude can generate invoices with
 this tool when you ask. Interactive runs also offer to install it.
 
 ## Notes
