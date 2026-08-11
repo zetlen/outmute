@@ -117,25 +117,28 @@ keep this file updated in the same commit/PR.
       compiled/web builds, with a runtime fallback for `bun run` dev use
       (read package.json). Add `--version` flag to the CLI and a small footer
       on the web page (`outmute v{version}`). Same constant for both.
-- [ ] `.github/workflows/ci.yml` on `pull_request`: jobs for
+- [x] `.github/workflows/ci.yml` on `pull_request`: jobs for
       `bun run fmt:check`, `bun run lint`, `bun run typecheck`, `bun test`
       (oven-sh/setup-bun; bun install --frozen-lockfile), plus a
       `pr-title` job using amannn/action-semantic-pull-request.
       Note the exact check names — Session E's ruleset references them.
-- [ ] Commits: `feat: add --version flag and web footer version` and
+- [x] Commits: `feat: add --version flag and web footer version` and
       `ci: check fmt, lint, types, tests, and PR title on pull requests`.
 
 ## Session E — branch protection (model: mid; gh api work)
 
 Prereq: CI from Session D has run at least once (check names must exist).
 
+CI check names (from `.github/workflows/ci.yml`, job ids = check names since
+there's no matrix): `fmt`, `lint`, `typecheck`, `test`, `pr-title`.
+
 - [ ] Repo merge settings: enable squash merge ONLY (disable merge commits
       and rebase merges); enable auto-merge; enable "automatically delete
       head branches".
 - [ ] Ruleset on `main` (gh api /repos/zetlen/outmute/rulesets): require PRs
-      (0 approvals), require status checks (all Session D check names),
-      require linear history, block force pushes and deletions, no bypass
-      actors.
+      (0 approvals), require status checks (`fmt`, `lint`, `typecheck`,
+      `test`, `pr-title`), require linear history, block force pushes and
+      deletions, no bypass actors.
 - [ ] Verify: direct push to main is rejected; a trivial PR with green checks
       can auto-merge via squash.
 - [ ] From here on, ALL changes land via squash-merged PRs with
