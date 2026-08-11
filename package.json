@@ -2,6 +2,7 @@
   "name": "outmute",
   "version": "2.0.0",
   "description": "Turn time-tracking exports (Clockify, for now) into PDF invoices — in the browser or from the command line. In voice ⇒ out mute.",
+  "license": "MIT",
   "type": "module",
   "bin": {
     "outmute": "./src/cli.ts"

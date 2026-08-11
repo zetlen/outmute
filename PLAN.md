@@ -54,10 +54,10 @@ keep this file updated in the same commit/PR.
 
 ## Session A — visibility + license (model: small)
 
-- [ ] `gh repo edit zetlen/outmute --visibility public --accept-visibility-change-consequences`
-- [ ] Add `LICENSE` (MIT, copyright holder "James Zetlen", year 2026).
-- [ ] Add `"license": "MIT"` to package.json.
-- [ ] Commit: `chore: add MIT license` (visibility flip has no commit).
+- [x] `gh repo edit zetlen/outmute --visibility public --accept-visibility-change-consequences`
+- [x] Add `LICENSE` (MIT, copyright holder "James Zetlen", year 2026).
+- [x] Add `"license": "MIT"` to package.json.
+- [x] Commit: `chore: add MIT license` (visibility flip has no commit).
 
 ## Session B — tooling + compliance (model: mid)
 
