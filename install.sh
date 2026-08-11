@@ -39,7 +39,7 @@ detect_target() {
       esac
       ;;
     MINGW* | MSYS* | CYGWIN* | Windows_NT)
-      die "this installer does not support Windows. Download the windows-x64 zip from $RELEASES_PAGE"
+      die "this installer does not support Windows. In PowerShell run: irm https://zetlen.github.io/outmute/install.ps1 | iex"
       ;;
     *)
       die "unsupported platform: $os $arch. See $RELEASES_PAGE"

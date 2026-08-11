@@ -99,9 +99,10 @@ jobs:
       - name: Build web app
         run: bun run build:web
 
-      - name: Add install.sh and disable Jekyll
+      - name: Add the install scripts and disable Jekyll
         run: |
           cp install.sh dist/install.sh
+          cp install.ps1 dist/install.ps1
           touch dist/.nojekyll
 
       - uses: actions/configure-pages@v5

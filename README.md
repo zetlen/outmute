@@ -15,15 +15,50 @@ the browser.
 
 ## Install
 
+macOS and Linux, in a terminal:
+
 ```sh
 curl -fsSL https://zetlen.github.io/outmute/install.sh | sh
 ```
 
-Downloads the latest release binary for your platform, verifies it against
-`SHASUMS256.txt`, and installs it to `~/.local/bin` (override with
-`OUTMUTE_INSTALL_DIR`; pin a version with `OUTMUTE_VERSION`). Re-run to
-update. On Windows, grab the `windows-x64` zip from the
-[releases page](https://github.com/zetlen/outmute/releases).
+Windows, in PowerShell (press Start, type "PowerShell", hit Enter):
+
+```powershell
+irm https://zetlen.github.io/outmute/install.ps1 | iex
+```
+
+Either one downloads the latest release binary for your platform, verifies it
+against `SHASUMS256.txt`, and installs it. Re-run to update.
+
+The Unix script installs to `~/.local/bin` and tells you if that is not on your
+`PATH`. The Windows script installs to `%LOCALAPPDATA%\Programs\outmute` and
+adds that folder to your user `PATH` for you, so open a new terminal afterwards
+and `outmute` is there. Both take the same settings, as environment variables:
+
+- `OUTMUTE_INSTALL_DIR` — install somewhere else.
+- `OUTMUTE_VERSION` — pin a version, e.g. `2.1.2`.
+- `OUTMUTE_NO_MODIFY_PATH` — Windows only; set to `1` to leave `PATH` alone.
+
+In PowerShell you set one like this before the install line:
+
+```powershell
+$env:OUTMUTE_INSTALL_DIR = 'C:\tools\outmute'
+irm https://zetlen.github.io/outmute/install.ps1 | iex
+```
+
+If you would rather read the Windows script before running it, save it and run
+it as a file — `-ExecutionPolicy Bypass` because it is unsigned:
+
+```powershell
+irm https://zetlen.github.io/outmute/install.ps1 -OutFile install.ps1
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -InstallDir C:\tools\outmute
+```
+
+Windows on ARM works: there is no arm64 build, so the installer picks the x64
+one, which Windows runs under emulation. Prefer to do it by hand? The
+`windows-x64` zip on the
+[releases page](https://github.com/zetlen/outmute/releases) holds a single
+`outmute.exe`.
 
 Tool managers that install directly from GitHub releases also work — the
 release assets follow the `<name>-<version>-<os>-<arch>` convention they
