@@ -17,6 +17,7 @@ import { computeInvoice, InvoiceError } from "./core/invoice";
 import { renderInvoicePdf } from "./core/pdf";
 import { fmtDay, fmtHours, money, symbolForCurrency } from "./core/format";
 import { DEFAULT_CONFIG, mergeConfig, type GroupBy, type InvoiceConfig } from "./core/types";
+import { anchorFontPaths, FontError, resolveFontSlots } from "./core/fonts";
 import { VERSION } from "./core/version";
 import index from "./web/index.html";
 
@@ -62,7 +63,12 @@ Config overrides (each replaces the corresponding config value):
       --currency <symbol>       --tax-percent <n>      --tax-label <text>
       --net-days <n>            --round-up <minutes>   --notes <text>
       --accent <#rrggbb>        --paper letter|a4
-      --font sans|serif|mono    typeface: Inter, Source Serif 4, or JetBrains Mono
+
+Typefaces (each value is sans|serif|mono — Inter, Source Serif 4, JetBrains
+Mono — or your own "regular.ttf" / "regular.ttf,bold.ttf", TTF or OTF only):
+      --font-heading <value>    title, sender/client names, section labels
+      --font-body <value>       everything else
+      --font <value>            sets both slots; a per-slot flag wins over it
 
 Export the CSV in Clockify: Reports > Detailed > Export > Save as CSV.
 `;
@@ -91,7 +97,7 @@ const CONFIG_TEMPLATE: unknown = {
     lines: ["123 Example Street", "Springfield, ST 00000", "you@example.com"],
   },
   to: { name: "Client, Inc.", lines: ["456 Client Avenue", "Métropole, ST 11111"] },
-  invoice: { ...DEFAULT_CONFIG.invoice },
+  invoice: { ...DEFAULT_CONFIG.invoice, fonts: { ...DEFAULT_CONFIG.invoice.fonts } },
   rates: { default: 100 },
 };
 
@@ -134,6 +140,8 @@ function parseCliArgs(): { answers: Answers; overrides: Record<string, string | 
         "input-format": { type: "string" },
         port: { type: "string" },
         font: { type: "string" },
+        "font-heading": { type: "string" },
+        "font-body": { type: "string" },
         "from-name": { type: "string" },
         "from-lines": { type: "string" },
         "to-name": { type: "string" },
@@ -187,9 +195,6 @@ function parseCliArgs(): { answers: Answers; overrides: Record<string, string | 
   if (values.accent && !/^#[0-9a-fA-F]{6}$/.test(values.accent)) {
     die(`invalid --accent ${JSON.stringify(values.accent)}; expected #rrggbb`);
   }
-  if (values.font && !["sans", "serif", "mono"].includes(values.font)) {
-    die(`invalid --font ${JSON.stringify(values.font)}; use sans|serif|mono`);
-  }
   if (values.port && !(Number.isInteger(Number(values.port)) && Number(values.port) > 0)) {
     die(`invalid --port ${JSON.stringify(values.port)}; expected a port number`);
   }
@@ -232,6 +237,8 @@ function parseCliArgs(): { answers: Answers; overrides: Record<string, string | 
       accent: values.accent,
       paper: values.paper,
       font: values.font,
+      fontHeading: values["font-heading"],
+      fontBody: values["font-body"],
     },
   };
 }
@@ -249,7 +256,10 @@ function loadConfigFile(
     return { config: mergeConfig({}), found: false };
   }
   try {
-    return { config: mergeConfig(JSON.parse(readFileSync(path, "utf8"))), found: true };
+    const config = mergeConfig(JSON.parse(readFileSync(path, "utf8")));
+    // Custom font paths in a config file are relative to that file.
+    config.invoice.fonts = anchorFontPaths(config.invoice.fonts, (p) => resolve(dirname(path), p));
+    return { config, found: true };
   } catch (err) {
     die(`couldn't parse ${path}: ${(err as Error).message}`);
   }
@@ -277,7 +287,17 @@ function applyOverrides(config: InvoiceConfig, o: Record<string, string | undefi
   if (o.notes !== undefined) config.invoice.notes = o.notes;
   if (o.accent !== undefined) config.invoice.accent = o.accent;
   if (o.paper !== undefined) config.invoice.paper = o.paper as "letter" | "a4";
-  if (o.font !== undefined) config.invoice.font = o.font as InvoiceConfig["invoice"]["font"];
+  // CLI font paths are relative to the working directory, unlike config ones.
+  try {
+    config.invoice.fonts = resolveFontSlots(
+      config.invoice.fonts,
+      { font: o.font, heading: o.fontHeading, body: o.fontBody },
+      (path) => resolve(path),
+    );
+  } catch (err) {
+    if (err instanceof FontError) die(err.message);
+    throw err;
+  }
 }
 
 // ---- Web server & Claude skill ----

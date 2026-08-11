@@ -96,7 +96,8 @@ const FIELD_IDS = [
   "group",
   "accent",
   "paper",
-  "font",
+  "fontHeading",
+  "fontBody",
   "notes",
 ] as const;
 const CHECKBOX_IDS = ["all", "appendix"] as const;
@@ -155,7 +156,7 @@ form.addEventListener("submit", async (e) => {
       notes: $<HTMLTextAreaElement>("notes").value,
       accent: val("accent"),
       paper: val("paper"),
-      font: val("font"),
+      fonts: { heading: val("fontHeading"), body: val("fontBody") },
     },
     rates: rate > 0 ? { default: rate } : {},
   });

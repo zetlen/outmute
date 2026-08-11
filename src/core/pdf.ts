@@ -1,7 +1,7 @@
 import { PDFDocument, PDFPage, rgb, type RGB } from "pdf-lib";
 import type { Invoice } from "./types";
 import { fmtDay, fmtHours, money } from "./format";
-import { embedFamily, Face } from "./fonts";
+import { embedFonts, Face } from "./fonts";
 
 const PAPER = {
   letter: [612, 792] as [number, number],
@@ -139,15 +139,20 @@ export async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   doc.setTitle(`Invoice ${inv.number}`);
   doc.setCreator("outmute");
-  const { regular, bold } = await embedFamily(doc, inv.config.invoice.font);
+  const fonts = await embedFonts(doc, inv.config.invoice.fonts);
+  // The heading slot styles the title, the party names and the small tracked
+  // labels; everything else — entries, addresses, meta, totals, notes, the
+  // appendix and the footer — is set in the body slot.
+  const { regular, bold } = fonts.body;
+  const heading = fonts.heading;
   const accent = hexToRgb(inv.config.invoice.accent);
   const p = new Painter(doc, PAPER[inv.config.invoice.paper]);
   const sym = inv.currency;
 
   const body: Style = { face: regular, size: 9.5, color: INK };
   const small: Style = { face: regular, size: 8.5, color: MUTED };
-  const label: Style = { face: bold, size: 7, color: accent };
-  const colhead: Style = { face: regular, size: 7, color: MUTED };
+  const label: Style = { face: heading.bold, size: 7, color: accent };
+  const colhead: Style = { face: heading.regular, size: 7, color: MUTED };
 
   const labelRow = (text: string) => {
     p.tracked(text.toUpperCase(), MARGIN, label, 1.1);
@@ -157,7 +162,7 @@ export async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
   // ---- Header: from-block left, title + meta right ----
   const topY = p.y - 14;
   p.y = topY;
-  p.text(inv.config.from.name, MARGIN, { face: bold, size: 13, color: INK });
+  p.text(inv.config.from.name, MARGIN, { face: heading.bold, size: 13, color: INK });
   p.y -= 15;
   for (const line of inv.config.from.lines) {
     p.text(line, MARGIN, { face: regular, size: 9, color: MUTED });
@@ -166,7 +171,7 @@ export async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
   const afterFrom = p.y;
 
   p.y = topY - 3;
-  const titleStyle: Style = { face: regular, size: 22, color: accent };
+  const titleStyle: Style = { face: heading.regular, size: 22, color: accent };
   const titleW = p.trackedWidth("INVOICE", titleStyle, 4);
   p.tracked("INVOICE", p.right - titleW, titleStyle, 4);
   p.y -= 24;
@@ -185,7 +190,7 @@ export async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
 
   // ---- Bill to ----
   labelRow("Bill To");
-  p.text(inv.config.to.name, MARGIN, { face: bold, size: 11, color: INK });
+  p.text(inv.config.to.name, MARGIN, { face: heading.bold, size: 11, color: INK });
   p.y -= 14;
   for (const line of inv.config.to.lines) {
     p.text(line, MARGIN, { face: regular, size: 9, color: INK });
