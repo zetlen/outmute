@@ -76,12 +76,12 @@ keep this file updated in the same commit/PR.
       or document `bunx lefthook install` in README.
 - [x] Add package.json scripts: `fmt`, `fmt:check`, `lint`, `test` (keep
       existing `typecheck`).
-- [ ] Run oxfmt + oxlint over the repo; commit the compliance changeset.
+- [x] Run oxfmt + oxlint over the repo; commit the compliance changeset.
       Verify after: `bun run typecheck` passes and
       `bun run src/cli.ts <csv> --no-input ...` still produces a correct PDF
       (synthetic CSV: header with Project,Description,Billable,Start Date,
       Duration (h),Duration (decimal),Billable Rate (EUR) and a couple rows).
-- [ ] Two commits: `chore: add oxfmt, oxlint, typescript 7, and lefthook` and
+- [x] Two commits: `chore: add oxfmt, oxlint, typescript 7, and lefthook` and
       `style: bring codebase into fmt/lint compliance`.
 
 ## Session C — tests + compile fix (model: mid, quality matters most here)

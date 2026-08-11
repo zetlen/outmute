@@ -51,16 +51,66 @@ export const FONT_LABELS: Record<FontFamily, string> = {
 // JetBrains Mono has no ₹) degrade to a sans glyph instead of "?".
 const MANIFEST: Record<FontFamily, { regular: string[]; bold: string[] }> = {
   sans: {
-    regular: [interLatin400, interLatinExt400, interCyrillic400, interCyrillicExt400, interGreek400, interVietnamese400],
-    bold: [interLatin700, interLatinExt700, interCyrillic700, interCyrillicExt700, interGreek700, interVietnamese700],
+    regular: [
+      interLatin400,
+      interLatinExt400,
+      interCyrillic400,
+      interCyrillicExt400,
+      interGreek400,
+      interVietnamese400,
+    ],
+    bold: [
+      interLatin700,
+      interLatinExt700,
+      interCyrillic700,
+      interCyrillicExt700,
+      interGreek700,
+      interVietnamese700,
+    ],
   },
   serif: {
-    regular: [serifLatin400, serifLatinExt400, serifCyrillic400, serifCyrillicExt400, serifGreek400, serifVietnamese400, interLatin400, interLatinExt400],
-    bold: [serifLatin700, serifLatinExt700, serifCyrillic700, serifCyrillicExt700, serifGreek700, serifVietnamese700, interLatin700, interLatinExt700],
+    regular: [
+      serifLatin400,
+      serifLatinExt400,
+      serifCyrillic400,
+      serifCyrillicExt400,
+      serifGreek400,
+      serifVietnamese400,
+      interLatin400,
+      interLatinExt400,
+    ],
+    bold: [
+      serifLatin700,
+      serifLatinExt700,
+      serifCyrillic700,
+      serifCyrillicExt700,
+      serifGreek700,
+      serifVietnamese700,
+      interLatin700,
+      interLatinExt700,
+    ],
   },
   mono: {
-    regular: [monoLatin400, monoLatinExt400, monoCyrillic400, monoCyrillicExt400, monoGreek400, monoVietnamese400, interLatin400, interLatinExt400],
-    bold: [monoLatin700, monoLatinExt700, monoCyrillic700, monoCyrillicExt700, monoGreek700, monoVietnamese700, interLatin700, interLatinExt700],
+    regular: [
+      monoLatin400,
+      monoLatinExt400,
+      monoCyrillic400,
+      monoCyrillicExt400,
+      monoGreek400,
+      monoVietnamese400,
+      interLatin400,
+      interLatinExt400,
+    ],
+    bold: [
+      monoLatin700,
+      monoLatinExt700,
+      monoCyrillic700,
+      monoCyrillicExt700,
+      monoGreek700,
+      monoVietnamese700,
+      interLatin700,
+      interLatinExt700,
+    ],
   },
 };
 

@@ -1,152 +1,330 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>outmute</title>
-<style>
-:root {
-  --accent: #20509e; --ink: #1a1d21; --muted: #6b7280;
-  --rule: #e5e7eb; --bg: #f3f4f6; --card: #ffffff;
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  color: var(--ink); background: var(--bg);
-  padding: 2rem 1rem 4rem;
-}
-main { max-width: 46rem; margin: 0 auto; }
-h1 {
-  font-size: 1.9rem; font-weight: 300; letter-spacing: .14em;
-  text-transform: uppercase; color: var(--accent);
-}
-.tagline { color: var(--muted); margin: .3rem 0 1.8rem; }
-.tagline code { font-size: .85em; background: #e8eaee; padding: .1em .35em; border-radius: 4px; }
-form { display: flex; flex-direction: column; gap: 1.4rem; }
-fieldset {
-  border: none; background: var(--card); border-radius: 10px;
-  padding: 1.2rem 1.4rem 1.4rem; box-shadow: 0 1px 8px rgba(0,0,0,.06);
-}
-legend {
-  float: left; width: 100%;
-  font-size: .72rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
-  color: var(--accent); margin-bottom: .9rem;
-}
-.grid { clear: both; display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .9rem 1.2rem; }
-label { display: flex; flex-direction: column; gap: .3rem; font-size: .84rem; color: var(--muted); }
-label.check { flex-direction: row; align-items: center; gap: .5rem; color: var(--ink); align-self: end; }
-input[type=text], input[type=number], textarea, select {
-  font: inherit; color: var(--ink);
-  border: 1px solid var(--rule); border-radius: 6px; padding: .45rem .6rem;
-  background: #fff; width: 100%;
-}
-input:focus-visible, textarea:focus-visible, select:focus-visible {
-  outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent;
-}
-textarea { resize: vertical; min-height: 4.2rem; }
-input[type=color] { border: 1px solid var(--rule); border-radius: 6px; height: 2.3rem; width: 100%; padding: .15rem; background: #fff; }
-.span2 { grid-column: 1 / -1; }
-#dropzone {
-  border: 2px dashed #c6cbd4; border-radius: 10px; background: var(--card);
-  padding: 2.2rem 1.4rem; text-align: center; color: var(--muted); cursor: pointer;
-  transition: border-color .15s, background .15s;
-}
-#dropzone.dragover { border-color: var(--accent); background: #eef3fb; }
-#dropzone.loaded { border-style: solid; border-color: #7ea56f; color: var(--ink); }
-#dropzone strong { color: var(--accent); }
-#dropzone .hint { font-size: .8rem; margin-top: .4rem; }
-#generate {
-  font: inherit; font-weight: 600; color: #fff; background: var(--accent);
-  border: none; border-radius: 8px; padding: .8rem 1.6rem; cursor: pointer;
-  align-self: flex-start;
-}
-#generate:hover { filter: brightness(1.1); }
-#generate:disabled { background: #aab4c4; cursor: not-allowed; }
-#status { border-radius: 8px; padding: .8rem 1rem; font-size: .9rem; display: none; white-space: pre-wrap; }
-#status.ok { display: block; background: #eef6ec; color: #2f5d24; }
-#status.err { display: block; background: #fbeeee; color: #8a2424; }
-footer { margin-top: 2.5rem; color: var(--muted); font-size: .8rem; }
-</style>
-</head>
-<body>
-<main>
-  <h1>outmute</h1>
-  <p class="tagline">
-    Turn a time-tracking report (e.g. a Clockify Detailed-report CSV) into a PDF invoice — entirely in your browser;
-    nothing is uploaded. Export from Clockify via <code>Reports&nbsp;&gt;&nbsp;Detailed&nbsp;&gt;&nbsp;Export&nbsp;&gt;&nbsp;Save&nbsp;as&nbsp;CSV</code>.
-  </p>
-  <form id="form">
-    <div id="dropzone" tabindex="0" role="button" aria-label="Choose or drop the Clockify CSV export">
-      <div id="dropzone-text">Drop your Clockify CSV export here, or <strong>browse</strong></div>
-      <div class="hint" id="dropzone-hint">The CSV supplies dates, hours, projects, and billable rates.</div>
-      <input type="file" id="file" accept=".csv,text/csv" hidden>
-    </div>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>outmute</title>
+    <style>
+      :root {
+        --accent: #20509e;
+        --ink: #1a1d21;
+        --muted: #6b7280;
+        --rule: #e5e7eb;
+        --bg: #f3f4f6;
+        --card: #ffffff;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font:
+          15px/1.5 system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+        color: var(--ink);
+        background: var(--bg);
+        padding: 2rem 1rem 4rem;
+      }
+      main {
+        max-width: 46rem;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 1.9rem;
+        font-weight: 300;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+      .tagline {
+        color: var(--muted);
+        margin: 0.3rem 0 1.8rem;
+      }
+      .tagline code {
+        font-size: 0.85em;
+        background: #e8eaee;
+        padding: 0.1em 0.35em;
+        border-radius: 4px;
+      }
+      form {
+        display: flex;
+        flex-direction: column;
+        gap: 1.4rem;
+      }
+      fieldset {
+        border: none;
+        background: var(--card);
+        border-radius: 10px;
+        padding: 1.2rem 1.4rem 1.4rem;
+        box-shadow: 0 1px 8px rgba(0, 0, 0, 0.06);
+      }
+      legend {
+        float: left;
+        width: 100%;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin-bottom: 0.9rem;
+      }
+      .grid {
+        clear: both;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+        gap: 0.9rem 1.2rem;
+      }
+      label {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+        font-size: 0.84rem;
+        color: var(--muted);
+      }
+      label.check {
+        flex-direction: row;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--ink);
+        align-self: end;
+      }
+      input[type="text"],
+      input[type="number"],
+      textarea,
+      select {
+        font: inherit;
+        color: var(--ink);
+        border: 1px solid var(--rule);
+        border-radius: 6px;
+        padding: 0.45rem 0.6rem;
+        background: #fff;
+        width: 100%;
+      }
+      input:focus-visible,
+      textarea:focus-visible,
+      select:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+        border-color: transparent;
+      }
+      textarea {
+        resize: vertical;
+        min-height: 4.2rem;
+      }
+      input[type="color"] {
+        border: 1px solid var(--rule);
+        border-radius: 6px;
+        height: 2.3rem;
+        width: 100%;
+        padding: 0.15rem;
+        background: #fff;
+      }
+      .span2 {
+        grid-column: 1 / -1;
+      }
+      #dropzone {
+        border: 2px dashed #c6cbd4;
+        border-radius: 10px;
+        background: var(--card);
+        padding: 2.2rem 1.4rem;
+        text-align: center;
+        color: var(--muted);
+        cursor: pointer;
+        transition:
+          border-color 0.15s,
+          background 0.15s;
+      }
+      #dropzone.dragover {
+        border-color: var(--accent);
+        background: #eef3fb;
+      }
+      #dropzone.loaded {
+        border-style: solid;
+        border-color: #7ea56f;
+        color: var(--ink);
+      }
+      #dropzone strong {
+        color: var(--accent);
+      }
+      #dropzone .hint {
+        font-size: 0.8rem;
+        margin-top: 0.4rem;
+      }
+      #generate {
+        font: inherit;
+        font-weight: 600;
+        color: #fff;
+        background: var(--accent);
+        border: none;
+        border-radius: 8px;
+        padding: 0.8rem 1.6rem;
+        cursor: pointer;
+        align-self: flex-start;
+      }
+      #generate:hover {
+        filter: brightness(1.1);
+      }
+      #generate:disabled {
+        background: #aab4c4;
+        cursor: not-allowed;
+      }
+      #status {
+        border-radius: 8px;
+        padding: 0.8rem 1rem;
+        font-size: 0.9rem;
+        display: none;
+        white-space: pre-wrap;
+      }
+      #status.ok {
+        display: block;
+        background: #eef6ec;
+        color: #2f5d24;
+      }
+      #status.err {
+        display: block;
+        background: #fbeeee;
+        color: #8a2424;
+      }
+      footer {
+        margin-top: 2.5rem;
+        color: var(--muted);
+        font-size: 0.8rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>outmute</h1>
+      <p class="tagline">
+        Turn a time-tracking report (e.g. a Clockify Detailed-report CSV) into a PDF invoice —
+        entirely in your browser; nothing is uploaded. Export from Clockify via
+        <code
+          >Reports&nbsp;&gt;&nbsp;Detailed&nbsp;&gt;&nbsp;Export&nbsp;&gt;&nbsp;Save&nbsp;as&nbsp;CSV</code
+        >.
+      </p>
+      <form id="form">
+        <div
+          id="dropzone"
+          tabindex="0"
+          role="button"
+          aria-label="Choose or drop the Clockify CSV export"
+        >
+          <div id="dropzone-text">
+            Drop your Clockify CSV export here, or <strong>browse</strong>
+          </div>
+          <div class="hint" id="dropzone-hint">
+            The CSV supplies dates, hours, projects, and billable rates.
+          </div>
+          <input type="file" id="file" accept=".csv,text/csv" hidden />
+        </div>
 
-    <fieldset>
-      <legend>From (you)</legend>
-      <div class="grid">
-        <label>Name <input type="text" id="fromName" placeholder="Your Name" required></label>
-        <label>Address / email / phone (one per line)
-          <textarea id="fromLines" placeholder="123 Example Street&#10;you@example.com"></textarea>
-        </label>
-      </div>
-    </fieldset>
+        <fieldset>
+          <legend>From (you)</legend>
+          <div class="grid">
+            <label>Name <input type="text" id="fromName" placeholder="Your Name" required /></label>
+            <label
+              >Address / email / phone (one per line)
+              <textarea
+                id="fromLines"
+                placeholder="123 Example Street&#10;you@example.com"
+              ></textarea>
+            </label>
+          </div>
+        </fieldset>
 
-    <fieldset>
-      <legend>Bill to</legend>
-      <div class="grid">
-        <label>Client name <input type="text" id="toName" placeholder="Client, Inc." required></label>
-        <label>Client address (one per line)
-          <textarea id="toLines" placeholder="456 Client Avenue"></textarea>
-        </label>
-      </div>
-    </fieldset>
+        <fieldset>
+          <legend>Bill to</legend>
+          <div class="grid">
+            <label
+              >Client name <input type="text" id="toName" placeholder="Client, Inc." required
+            /></label>
+            <label
+              >Client address (one per line)
+              <textarea id="toLines" placeholder="456 Client Avenue"></textarea>
+            </label>
+          </div>
+        </fieldset>
 
-    <fieldset>
-      <legend>Invoice details</legend>
-      <div class="grid">
-        <label>Invoice number <input type="text" id="number" placeholder="(auto: INV-&lt;last date&gt;)"></label>
-        <label>Default hourly rate <input type="number" id="rate" min="0" step="any" placeholder="used when the CSV has none"></label>
-        <label>Currency symbol <input type="text" id="currency" placeholder="(auto-detect, else $)"></label>
-        <label>Payment terms (net days) <input type="number" id="netDays" value="30" min="0"></label>
-        <label>Tax percent <input type="number" id="taxPercent" value="0" min="0" step="any"></label>
-        <label>Tax label <input type="text" id="taxLabel" value="Tax"></label>
-        <label>Round hours up to (minutes) <input type="number" id="roundUp" value="0" min="0" step="1"></label>
-        <label>Group line items by
-          <select id="group">
-            <option value="description" selected>Description</option>
-            <option value="project">Project</option>
-            <option value="day">Day</option>
-            <option value="entry">Individual entry</option>
-          </select>
-        </label>
-        <label>Accent color <input type="color" id="accent" value="#20509e"></label>
-        <label>Paper size
-          <select id="paper">
-            <option value="letter" selected>Letter</option>
-            <option value="a4">A4</option>
-          </select>
-        </label>
-        <label>Typeface
-          <select id="font">
-            <option value="sans" selected>Inter (sans-serif)</option>
-            <option value="serif">Source Serif 4</option>
-            <option value="mono">JetBrains Mono</option>
-          </select>
-        </label>
-        <label class="check"><input type="checkbox" id="all"> Include non-billable entries</label>
-        <label class="check"><input type="checkbox" id="appendix"> Append per-entry detail page</label>
-        <label class="span2">Notes
-          <textarea id="notes">Thank you for your business. Please remit payment within {net_days} days.</textarea>
-        </label>
-      </div>
-    </fieldset>
+        <fieldset>
+          <legend>Invoice details</legend>
+          <div class="grid">
+            <label
+              >Invoice number
+              <input type="text" id="number" placeholder="(auto: INV-&lt;last date&gt;)"
+            /></label>
+            <label
+              >Default hourly rate
+              <input
+                type="number"
+                id="rate"
+                min="0"
+                step="any"
+                placeholder="used when the CSV has none"
+            /></label>
+            <label
+              >Currency symbol <input type="text" id="currency" placeholder="(auto-detect, else $)"
+            /></label>
+            <label
+              >Payment terms (net days) <input type="number" id="netDays" value="30" min="0"
+            /></label>
+            <label
+              >Tax percent <input type="number" id="taxPercent" value="0" min="0" step="any"
+            /></label>
+            <label>Tax label <input type="text" id="taxLabel" value="Tax" /></label>
+            <label
+              >Round hours up to (minutes)
+              <input type="number" id="roundUp" value="0" min="0" step="1"
+            /></label>
+            <label
+              >Group line items by
+              <select id="group">
+                <option value="description" selected>Description</option>
+                <option value="project">Project</option>
+                <option value="day">Day</option>
+                <option value="entry">Individual entry</option>
+              </select>
+            </label>
+            <label>Accent color <input type="color" id="accent" value="#20509e" /></label>
+            <label
+              >Paper size
+              <select id="paper">
+                <option value="letter" selected>Letter</option>
+                <option value="a4">A4</option>
+              </select>
+            </label>
+            <label
+              >Typeface
+              <select id="font">
+                <option value="sans" selected>Inter (sans-serif)</option>
+                <option value="serif">Source Serif 4</option>
+                <option value="mono">JetBrains Mono</option>
+              </select>
+            </label>
+            <label class="check"
+              ><input type="checkbox" id="all" /> Include non-billable entries</label
+            >
+            <label class="check"
+              ><input type="checkbox" id="appendix" /> Append per-entry detail page</label
+            >
+            <label class="span2"
+              >Notes
+              <textarea id="notes">
+Thank you for your business. Please remit payment within {net_days} days.</textarea>
+            </label>
+          </div>
+        </fieldset>
 
-    <button type="submit" id="generate" disabled>Generate PDF</button>
-    <div id="status" role="status"></div>
-  </form>
-  <footer>Your form entries are kept in this browser's local storage so repeat invoices are quick.</footer>
-</main>
-<script type="module" src="./main.ts"></script>
-</body>
+        <button type="submit" id="generate" disabled>Generate PDF</button>
+        <div id="status" role="status"></div>
+      </form>
+      <footer>
+        Your form entries are kept in this browser's local storage so repeat invoices are quick.
+      </footer>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
 </html>

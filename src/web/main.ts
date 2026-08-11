@@ -55,13 +55,19 @@ async function acceptFile(file: File): Promise<void> {
 
 dropzone.addEventListener("click", () => fileInput.click());
 dropzone.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); }
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    fileInput.click();
+  }
 });
 fileInput.addEventListener("change", () => {
   if (fileInput.files?.[0]) void acceptFile(fileInput.files[0]);
 });
 for (const type of ["dragenter", "dragover"] as const) {
-  dropzone.addEventListener(type, (e) => { e.preventDefault(); dropzone.classList.add("dragover"); });
+  dropzone.addEventListener(type, (e) => {
+    e.preventDefault();
+    dropzone.classList.add("dragover");
+  });
 }
 dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragover"));
 dropzone.addEventListener("drop", (e) => {
@@ -73,8 +79,22 @@ dropzone.addEventListener("drop", (e) => {
 
 // ---- Form persistence ----
 const FIELD_IDS = [
-  "fromName", "fromLines", "toName", "toLines", "number", "rate", "currency",
-  "netDays", "taxPercent", "taxLabel", "roundUp", "group", "accent", "paper", "font", "notes",
+  "fromName",
+  "fromLines",
+  "toName",
+  "toLines",
+  "number",
+  "rate",
+  "currency",
+  "netDays",
+  "taxPercent",
+  "taxLabel",
+  "roundUp",
+  "group",
+  "accent",
+  "paper",
+  "font",
+  "notes",
 ] as const;
 const CHECKBOX_IDS = ["all", "appendix"] as const;
 const STORAGE_KEY = "outmute-form";
@@ -99,13 +119,19 @@ function restoreForm(): void {
     for (const id of CHECKBOX_IDS) {
       if (typeof data[id] === "boolean") $<HTMLInputElement>(id).checked = data[id];
     }
-  } catch { /* stale/invalid storage: start fresh */ }
+  } catch {
+    /* stale/invalid storage: start fresh */
+  }
 }
 restoreForm();
 form.addEventListener("input", saveForm);
 
 // ---- Generate ----
-const splitLines = (raw: string) => raw.split("\n").map((s) => s.trim()).filter(Boolean);
+const splitLines = (raw: string) =>
+  raw
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean);
 const val = (id: string) => $<HTMLInputElement>(id).value.trim();
 
 form.addEventListener("submit", async (e) => {

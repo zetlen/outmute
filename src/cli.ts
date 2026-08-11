@@ -158,8 +158,10 @@ function parseCliArgs(): { answers: Answers; overrides: Record<string, string | 
 
   if (positionals.length > 1) die(`unexpected arguments: ${positionals.slice(1).join(" ")}`);
   const group = (values.group ?? "description") as GroupBy;
-  if (!GROUPS.includes(group)) die(`invalid --group ${JSON.stringify(values.group)}; use ${GROUPS.join("|")}`);
-  if (values.paper && !["letter", "a4"].includes(values.paper)) die(`invalid --paper ${JSON.stringify(values.paper)}; use letter|a4`);
+  if (!GROUPS.includes(group))
+    die(`invalid --group ${JSON.stringify(values.group)}; use ${GROUPS.join("|")}`);
+  if (values.paper && !["letter", "a4"].includes(values.paper))
+    die(`invalid --paper ${JSON.stringify(values.paper)}; use letter|a4`);
   for (const flag of ["rate", "tax-percent", "net-days", "round-up"] as const) {
     if (values[flag] !== undefined && !Number.isFinite(Number(values[flag]))) {
       die(`invalid --${flag} ${JSON.stringify(values[flag])}; expected a number`);
@@ -175,7 +177,9 @@ function parseCliArgs(): { answers: Answers; overrides: Record<string, string | 
     die(`invalid --port ${JSON.stringify(values.port)}; expected a port number`);
   }
   if (values["input-format"] && !adapterNames.includes(values["input-format"])) {
-    die(`invalid --input-format ${JSON.stringify(values["input-format"])}; use ${adapterNames.join("|")}`);
+    die(
+      `invalid --input-format ${JSON.stringify(values["input-format"])}; use ${adapterNames.join("|")}`,
+    );
   }
 
   return {
@@ -236,9 +240,17 @@ function loadConfigFile(
 
 function applyOverrides(config: InvoiceConfig, o: Record<string, string | undefined>): void {
   if (o.fromName !== undefined) config.from.name = o.fromName;
-  if (o.fromLines !== undefined) config.from.lines = o.fromLines.split(";").map((s) => s.trim()).filter(Boolean);
+  if (o.fromLines !== undefined)
+    config.from.lines = o.fromLines
+      .split(";")
+      .map((s) => s.trim())
+      .filter(Boolean);
   if (o.toName !== undefined) config.to.name = o.toName;
-  if (o.toLines !== undefined) config.to.lines = o.toLines.split(";").map((s) => s.trim()).filter(Boolean);
+  if (o.toLines !== undefined)
+    config.to.lines = o.toLines
+      .split(";")
+      .map((s) => s.trim())
+      .filter(Boolean);
   if (o.rate !== undefined) config.rates["default"] = Number(o.rate);
   if (o.currency !== undefined) config.invoice.currency = o.currency;
   if (o.taxPercent !== undefined) config.invoice.taxPercent = Number(o.taxPercent);
@@ -303,7 +315,9 @@ class Prompter {
   question(prompt: string): Promise<string> {
     process.stdout.write(prompt);
     if (this.queue.length) return Promise.resolve(this.queue.shift()!);
-    return new Promise((resolve) => { this.waiter = resolve; });
+    return new Promise((resolve) => {
+      this.waiter = resolve;
+    });
   }
 
   close(): void {
@@ -460,7 +474,8 @@ async function main(): Promise<void> {
       number: answers.number,
     });
   } catch (err) {
-    if (err instanceof InvoiceError) die(`${err.message} (use --all to include non-billable entries)`);
+    if (err instanceof InvoiceError)
+      die(`${err.message} (use --all to include non-billable entries)`);
     throw err;
   }
 
@@ -468,7 +483,9 @@ async function main(): Promise<void> {
     invoice.number = await ask(rl, "Invoice number", { fallback: invoice.number });
   }
   const defaultOutput = `${invoice.number.replace(/[^A-Za-z0-9._-]/g, "_")}.pdf`;
-  let outputPath = answers.output ?? (rl ? await ask(rl, "Output PDF path", { fallback: defaultOutput }) : defaultOutput);
+  let outputPath =
+    answers.output ??
+    (rl ? await ask(rl, "Output PDF path", { fallback: defaultOutput }) : defaultOutput);
   if (!outputPath.toLowerCase().endsWith(".pdf")) outputPath += ".pdf";
 
   if (rl) {

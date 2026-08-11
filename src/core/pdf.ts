@@ -19,7 +19,11 @@ function hexToRgb(hex: string): RGB {
   return rgb(((n >> 16) & 0xff) / 255, ((n >> 8) & 0xff) / 255, (n & 0xff) / 255);
 }
 
-interface Style { face: Face; size: number; color: RGB; }
+interface Style {
+  face: Face;
+  size: number;
+  color: RGB;
+}
 
 function wrap(text: string, face: Face, size: number, maxWidth: number): string[] {
   const out: string[] = [];
@@ -33,7 +37,10 @@ function wrap(text: string, face: Face, size: number, maxWidth: number): string[
         let cut = word.length - 1;
         while (cut > 1 && face.widthOf(word.slice(0, cut), size) > maxWidth) cut--;
         const head = word.slice(0, cut);
-        if (line) { out.push(line); line = ""; }
+        if (line) {
+          out.push(line);
+          line = "";
+        }
         out.push(head);
         word = word.slice(cut);
       }
@@ -60,9 +67,15 @@ class Painter {
     this.addPage();
   }
 
-  get pageWidth() { return this.pageSize[0]; }
-  get right() { return this.pageSize[0] - MARGIN; }
-  get contentWidth() { return this.pageSize[0] - 2 * MARGIN; }
+  get pageWidth() {
+    return this.pageSize[0];
+  }
+  get right() {
+    return this.pageSize[0] - MARGIN;
+  }
+  get contentWidth() {
+    return this.pageSize[0] - 2 * MARGIN;
+  }
 
   addPage(): void {
     this.page = this.doc.addPage(this.pageSize);
@@ -81,7 +94,13 @@ class Painter {
   text(str: string, x: number, s: Style): void {
     let cx = x;
     for (const seg of s.face.segments(str)) {
-      this.page.drawText(seg.text, { x: cx, y: this.y, size: s.size, font: seg.font, color: s.color });
+      this.page.drawText(seg.text, {
+        x: cx,
+        y: this.y,
+        size: s.size,
+        font: seg.font,
+        color: s.color,
+      });
       cx += seg.font.widthOfTextAtSize(seg.text, s.size);
     }
   }

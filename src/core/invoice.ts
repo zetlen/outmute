@@ -34,7 +34,8 @@ function buildLines(entries: PricedEntry[], groupBy: InvoiceOptions["group"]): L
   const groups = new Map<string, PricedEntry[]>();
   entries.forEach((entry, i) => {
     let key: string;
-    if (groupBy === "description") key = JSON.stringify([entry.project, entry.description, entry.rate]);
+    if (groupBy === "description")
+      key = JSON.stringify([entry.project, entry.description, entry.rate]);
     else if (groupBy === "project") key = JSON.stringify([entry.project, entry.rate]);
     else if (groupBy === "day") key = JSON.stringify([entry.day, entry.project, entry.rate]);
     else key = String(i);
@@ -66,8 +67,11 @@ function buildLines(entries: PricedEntry[], groupBy: InvoiceOptions["group"]): L
   }
 
   lines.sort((a, b) =>
-    a.firstDay < b.firstDay ? -1 : a.firstDay > b.firstDay ? 1
-      : a.primary.toLowerCase().localeCompare(b.primary.toLowerCase()),
+    a.firstDay < b.firstDay
+      ? -1
+      : a.firstDay > b.firstDay
+        ? 1
+        : a.primary.toLowerCase().localeCompare(b.primary.toLowerCase()),
   );
   return lines;
 }
@@ -107,10 +111,10 @@ export function computeInvoice(
   const taxPercent = config.invoice.taxPercent;
   const tax = (subtotal * taxPercent) / 100;
   const days = priced.map((e) => e.day).sort();
-  const periodStart = days[0], periodEnd = days[days.length - 1];
+  const periodStart = days[0],
+    periodEnd = days[days.length - 1];
   const issued = options.issueDate ?? todayISO();
-  const number =
-    options.number || `${config.invoice.numberPrefix}${periodEnd.replaceAll("-", "")}`;
+  const number = options.number || `${config.invoice.numberPrefix}${periodEnd.replaceAll("-", "")}`;
 
   return {
     config,

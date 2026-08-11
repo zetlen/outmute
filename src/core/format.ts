@@ -1,8 +1,16 @@
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
-  USD: "$", EUR: "€", GBP: "£", CAD: "CA$", AUD: "A$",
-  NZD: "NZ$", INR: "₹", JPY: "¥", CHF: "CHF", SEK: "kr",
+  USD: "$",
+  EUR: "€",
+  GBP: "£",
+  CAD: "CA$",
+  AUD: "A$",
+  NZD: "NZ$",
+  INR: "₹",
+  JPY: "¥",
+  CHF: "CHF",
+  SEK: "kr",
 };
 
 /** Display symbol for an ISO 4217 code; unknown codes render as the code itself. */
@@ -47,7 +55,7 @@ export function fmtHours(hours: number): string {
 
 /** Lenient numeric parse: strips currency symbols, handles "1.234,56" and "1,234.56". */
 export function parseNumber(raw: string | undefined | null): number {
-  let s = (raw ?? "").replace(/[^\d.,\-]/g, "").trim();
+  let s = (raw ?? "").replace(/[^\d.,-]/g, "").trim();
   if (!s) return 0;
   if (s.includes(",") && !s.includes(".")) s = s.replace(/,/g, ".");
   else s = s.replace(/,/g, "");

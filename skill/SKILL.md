@@ -26,11 +26,13 @@ you only need flags for what's missing or different. If it doesn't exist and
 the user will invoice again, offer to save their answers with `--save-config`.
 
 Required knowledge before running — from the config file or by asking the user:
+
 - Sender: `--from-name "Name"` and `--from-lines "addr;email;phone"` (`;`-separated)
 - Client: `--to-name "Name"` and `--to-lines "…"`
 - Hourly rate, only if the CSV has no billable-rate column: `--rate <n>`
 
 Useful optional flags (full list: `--help`):
+
 - `-n <number>` invoice number (default: prefix + last entry date)
 - `-g description|project|day|entry` line-item grouping (default: description)
 - `--tax-percent <n>`, `--net-days <n>`, `--currency <symbol>`

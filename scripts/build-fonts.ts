@@ -11,7 +11,7 @@ const ROOT = resolve(import.meta.dir, "..");
 const OUT = resolve(ROOT, "src/fonts");
 
 const FAMILIES = {
-  "inter": "@fontsource/inter",
+  inter: "@fontsource/inter",
   "source-serif-4": "@fontsource/source-serif-4",
   "jetbrains-mono": "@fontsource/jetbrains-mono",
 } as const;
