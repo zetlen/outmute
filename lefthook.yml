@@ -13,4 +13,4 @@ pre-push:
     typecheck:
       run: bun run typecheck
     test:
-      run: bun test --pass-with-no-tests
+      run: bun test
