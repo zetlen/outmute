@@ -1,0 +1,67 @@
+name: Bug report
+description: Something outmute does is wrong or broken.
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please fill in as much as you can — the command
+        you ran and the input that triggered it are the two most useful parts.
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Command you ran
+      description: The full `outmute` invocation (or the web page action).
+      render: shell
+      placeholder: outmute report.csv --no-input --rate 125 -o invoice.pdf
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected output
+      description: What you thought would happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual output
+      description: >-
+        What happened instead. Paste the terminal output or error message
+        verbatim, and describe how the PDF looked if one was produced.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: outmute version
+      description: Output of `outmute --version`, or the commit if running from source.
+    validations:
+      required: true
+
+  - type: input
+    id: platform
+    attributes:
+      label: OS and platform
+      description: e.g. macOS 15 arm64, Ubuntu 24.04 x64, Windows 11 x64, or the browser for web issues.
+    validations:
+      required: true
+
+  - type: textarea
+    id: sample
+    attributes:
+      label: Sample CSV rows
+      description: >-
+        If the problem is input-related, paste a few rows of the offending CSV
+        (with the header row). Anonymize first — replace client, project, and
+        person names, and change rates and amounts. Keep the structure and the
+        formatting of dates, durations, and numbers intact, since that is
+        usually where the bug lives.
+      render: csv
+    validations:
+      required: false

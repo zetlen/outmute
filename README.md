@@ -25,35 +25,25 @@ Downloads the latest release binary for your platform, verifies it against
 update. On Windows, grab the `windows-x64` zip from the
 [releases page](https://github.com/zetlen/outmute/releases).
 
-## Setup (from source)
-
-```sh
-bun install
-```
-
 ## 1. Web page (everything stays in your browser)
 
 ```sh
-bun run web            # dev server
-bun run build:web      # static build in dist/ — host it anywhere
+outmute serve            # http://localhost:4520
+outmute serve --port 8080
 ```
 
 Fill in the form, drop the CSV on the dropzone, click **Generate PDF**. The
 file is parsed and the PDF is produced entirely client-side; nothing is
 uploaded. Form values persist in localStorage for repeat invoices.
 
-The CLI can also host the web version locally:
-
-```sh
-bun run src/cli.ts serve            # http://localhost:4520
-bun run src/cli.ts serve --port 8080
-```
+The same page is a static build you can host anywhere — see
+[Developer](#developer).
 
 ## 2. Interactive CLI
 
 ```sh
-bun run cli
-# or: bun run src/cli.ts report.csv
+outmute
+# or: outmute report.csv
 ```
 
 On a terminal, anything missing is asked for with validation and sensible
@@ -64,17 +54,17 @@ next time.
 ## 3. Non-interactive CLI
 
 ```sh
-bun run src/cli.ts report.csv --no-input \
+outmute report.csv --no-input \
   --from-name "Your Name" --from-lines "123 Example St;you@example.com" \
   --to-name "Client, Inc." --rate 125 --tax-percent 8.875 \
   --appendix -o invoice.pdf
 ```
 
 `--no-input` guarantees no prompts (it's also implied when stdin isn't a
-terminal, e.g. in CI). Run `bun run src/cli.ts --help` for all flags:
-grouping (`-g description|project|day|entry`), non-billable entries
-(`--all`), per-entry appendix page (`--appendix`), currency, net days,
-rounding, accent color (`--accent "#7a2048"`), typeface
+terminal, e.g. in CI). Run `outmute --help` for all flags: grouping
+(`-g description|project|day|entry`), non-billable entries (`--all`),
+per-entry appendix page (`--appendix`), input format (`--input-format`),
+currency, net days, rounding, accent color (`--accent "#7a2048"`), typeface
 (`--font sans|serif|mono`), paper size, and more.
 
 ## Config file
@@ -95,19 +85,53 @@ Latin, Latin Extended, Cyrillic, Greek, and Vietnamese, with per-character
 fallback across subsets (serif/mono additionally fall back to Inter for
 glyphs they lack, e.g. ₹); only the glyphs actually used are embedded, so
 PDFs stay small. Scripts outside that coverage (e.g. CJK) render as `?`.
-The TTFs in `src/fonts/` are generated from the Fontsource packages by
-`bun scripts/build-fonts.ts`.
 
 ## Claude Code skill
 
-`bun run src/cli.ts --install-skill` installs a skill at
-`~/.claude/skills/outmute/` so Claude can generate invoices with
-this tool when you ask. Interactive runs also offer to install it.
+`outmute --install-skill` installs a skill at `~/.claude/skills/outmute/` so
+Claude can generate invoices with this tool when you ask. Interactive runs
+also offer to install it.
 
 ## Notes
 
 - Line items group entries by description (default), project, day, or not at
   all; totals, tax, and optional round-up-to-N-minutes match the original
   Python version (`clockifyinvoice`, kept in git history).
-- Contributions land via pull request; CI runs formatting, lint, type, and
-  test checks plus a conventional-commit PR title check.
+
+## Developer
+
+Everything below runs from a clone of the repo rather than the installed
+binary. [Bun](https://bun.sh/) is the only prerequisite.
+
+```sh
+git clone https://github.com/zetlen/outmute.git
+cd outmute
+bun install            # also installs the lefthook git hooks via "prepare"
+```
+
+Run the CLI from source with `bun run cli` (equivalent to
+`bun run src/cli.ts`), which takes the same arguments as `outmute`.
+
+Web version:
+
+```sh
+bun run web            # dev server
+bun run build:web      # static build in dist/ — host it anywhere
+```
+
+Checks (all of these run in CI, and lefthook runs the first two on commit and
+the rest on push):
+
+```sh
+bun run fmt:check      # oxfmt
+bun run lint           # oxlint
+bun run typecheck      # tsc --noEmit
+bun test
+```
+
+The TTFs in `src/fonts/` are generated from the Fontsource packages by
+`bun scripts/build-fonts.ts`; re-run it after bumping a Fontsource
+dependency.
+
+Contributions land via pull request; CI runs formatting, lint, type, and test
+checks plus a conventional-commit PR title check.
