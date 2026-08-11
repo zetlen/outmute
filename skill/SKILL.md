@@ -8,7 +8,9 @@ description: Generate a PDF invoice from a Clockify Detailed report CSV export. 
 The tool is invoked as `{{CMD}}`. It turns a Clockify
 "Detailed report" CSV export into a PDF invoice.
 
-If the user has no CSV yet, tell them to export one in Clockify:
+If the user didn't say which CSV to use, stop and ask for the path — do not
+search the filesystem for CSVs or guess which file they meant. If they have no
+CSV yet, tell them to export one in Clockify:
 **Reports > Detailed > Export > Save as CSV**.
 
 ## How to run it
