@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.2](https://github.com/zetlen/outmute/compare/v2.1.1...v2.1.2) (2026-08-11)
+
+
+### Bug Fixes
+
+* **skill:** ask for the CSV path instead of hunting the filesystem ([#24](https://github.com/zetlen/outmute/issues/24)) ([411ea15](https://github.com/zetlen/outmute/commit/411ea152e27b00f6ce6d9ead04700474c5ab6c61))
+
 ## [2.1.1](https://github.com/zetlen/outmute/compare/v2.1.0...v2.1.1) (2026-08-11)
 
 
