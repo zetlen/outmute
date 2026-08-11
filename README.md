@@ -83,12 +83,14 @@ currency, net days, rounding, accent color (`--accent "#7a2048"`), typefaces
 
 ## Config file
 
-Defaults live in `~/.config/outmute/config.json` (a pre-rename
-`~/.config/clockify-invoice/config.json` is still honored)
-(`--init` writes a starter; `-c path` uses another file; `--save-config`
-writes the effective settings back). Flags override the config; the CSV's
-"Billable Rate" column overrides the `rates` map, which is used as fallback
-per project name with `"default"` covering the rest.
+Defaults live in `~/.config/outmute/config.toml` (`--init` writes a
+commented starter; `-c path` uses another file; `--save-config` writes the
+effective settings back). A config file from before this tool switched to
+TOML — `~/.config/outmute/config.json`, or the pre-rename
+`~/.config/clockify-invoice/config.json` — is still read if no `config.toml`
+exists yet; `-c path.json` also still works. Flags override the config; the
+CSV's "Billable Rate" column overrides the `rates` map, which is used as
+fallback per project name with `"default"` covering the rest.
 
 ## Fonts
 
@@ -119,15 +121,10 @@ In the config file, `invoice.fonts` holds the two slots; paths there are
 relative to the config file, while paths on the command line are relative to
 the working directory.
 
-```json
-{
-  "invoice": {
-    "fonts": {
-      "heading": { "regular": "fonts/Display.ttf", "bold": "fonts/Display-Bold.ttf" },
-      "body": "serif"
-    }
-  }
-}
+```toml
+[invoice.fonts]
+heading = { regular = "fonts/Display.ttf", bold = "fonts/Display-Bold.ttf" }
+body = "serif"
 ```
 
 ## Tests
@@ -141,7 +138,7 @@ bun run test:e2e           # browser end-to-end tests
 `bun test` covers the adapters, invoice math, and `src/cli.test.ts`, which
 spawns the real CLI against the fixture CSVs in `test/fixtures/`. Each run gets
 a throwaway `HOME`, so the suite never reads your own
-`~/.config/outmute/config.json`.
+`~/.config/outmute/config.toml`.
 
 `bun run test:e2e` starts `outmute serve` and drives the page in Chromium —
 form, CSV dropzone, and Generate PDF — checking the downloaded file really is a
