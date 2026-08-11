@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.2.0](https://github.com/zetlen/outmute/compare/v2.1.2...v2.2.0) (2026-08-11)
+
+
+### Features
+
+* **config:** switch config file format to TOML ([#26](https://github.com/zetlen/outmute/issues/26)) ([7cf4c22](https://github.com/zetlen/outmute/commit/7cf4c22ee6217ca0b8d680e00cdfd1de241202a9)), closes [#14](https://github.com/zetlen/outmute/issues/14)
+* **install:** add a PowerShell installer for Windows ([#30](https://github.com/zetlen/outmute/issues/30)) ([9efbc5c](https://github.com/zetlen/outmute/commit/9efbc5c248832783e03ea65e089970e298db661f)), closes [#28](https://github.com/zetlen/outmute/issues/28)
+* **web:** link to GitHub repo in footer ([#32](https://github.com/zetlen/outmute/issues/32)) ([275bc67](https://github.com/zetlen/outmute/commit/275bc676104d1c689f01bb622f306a25c1194ba8)), closes [#31](https://github.com/zetlen/outmute/issues/31)
+
+
+### Bug Fixes
+
+* **lefthook:** skip git-lfs hooks since outmute doesn't use LFS ([#29](https://github.com/zetlen/outmute/issues/29)) ([e06a296](https://github.com/zetlen/outmute/commit/e06a296237a34af5bff0158fcefcaf6b15e8354d)), closes [#21](https://github.com/zetlen/outmute/issues/21)
+
 ## [2.1.2](https://github.com/zetlen/outmute/compare/v2.1.1...v2.1.2) (2026-08-11)
 
 
