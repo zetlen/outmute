@@ -86,7 +86,7 @@ keep this file updated in the same commit/PR.
 
 ## Session C — tests + compile fix (model: mid, quality matters most here)
 
-- [ ] Write colocated bun tests for the pure core:
+- [x] Write colocated bun tests for the pure core:
   - `src/adapters/clockify.test.ts`: `parseCsv` (quoting, embedded quotes,
     newlines-in-fields, BOM, CRLF); `detect()` (accepts Clockify headers,
     rejects arbitrary CSV); `parse()` (date-format picking incl. ambiguous

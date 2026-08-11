@@ -1,22 +1,18 @@
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  USD: "$",
-  EUR: "€",
-  GBP: "£",
-  CAD: "CA$",
-  AUD: "A$",
-  NZD: "NZ$",
-  INR: "₹",
-  JPY: "¥",
-  CHF: "CHF",
-  SEK: "kr",
-};
-
 /** Display symbol for an ISO 4217 code; unknown codes render as the code itself. */
 export function symbolForCurrency(code: string | undefined): string | undefined {
   if (!code) return undefined;
-  return CURRENCY_SYMBOLS[code] ?? code;
+  try {
+    const parts = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: code,
+      currencyDisplay: "symbol",
+    }).formatToParts(0);
+    return parts.find((p) => p.type === "currency")?.value ?? code;
+  } catch {
+    return code;
+  }
 }
 
 /** "2026-08-05" -> "Aug 5, 2026" */
@@ -57,8 +53,14 @@ export function fmtHours(hours: number): string {
 export function parseNumber(raw: string | undefined | null): number {
   let s = (raw ?? "").replace(/[^\d.,-]/g, "").trim();
   if (!s) return 0;
-  if (s.includes(",") && !s.includes(".")) s = s.replace(/,/g, ".");
-  else s = s.replace(/,/g, "");
+  const lastComma = s.lastIndexOf(",");
+  const lastDot = s.lastIndexOf(".");
+  if (lastComma !== -1 && lastDot !== -1) {
+    // Whichever separator comes last is the decimal point; the other is thousands.
+    s = lastComma > lastDot ? s.replace(/\./g, "").replace(",", ".") : s.replace(/,/g, "");
+  } else if (lastComma !== -1) {
+    s = s.replace(",", ".");
+  }
   const n = Number(s);
   return Number.isFinite(n) ? n : 0;
 }
