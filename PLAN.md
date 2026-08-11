@@ -170,8 +170,8 @@ there's no matrix): `fmt`, `lint`, `typecheck`, `test`, `pr-title`.
 
 ## Session G — seed release + release-please (model: mid)
 
-- [ ] Confirm package.json version is `2.0.0` and main is green.
-- [ ] Seed release: `gh release create v2.0.0 --title "v2.0.0" --generate-notes`
+- [x] Confirm package.json version is `2.0.0` and main is green.
+- [x] Seed release: `gh release create v2.0.0 --title "v2.0.0" --generate-notes`
       at main's HEAD. This triggers release.yml — the dress rehearsal. Verify:
       three assets + SHASUMS256.txt attached; Pages live at
       https://zetlen.github.io/outmute with the version in the footer;
