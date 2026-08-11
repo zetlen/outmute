@@ -13,7 +13,19 @@ TypeScript throughout, one shared core. The PDF is generated with
 [pdf-lib](https://pdf-lib.js.org/) — no Chrome, no server, works in Bun and
 the browser.
 
-## Setup
+## Install
+
+```sh
+curl -fsSL https://zetlen.github.io/outmute/install.sh | sh
+```
+
+Downloads the latest release binary for your platform, verifies it against
+`SHASUMS256.txt`, and installs it to `~/.local/bin` (override with
+`OUTMUTE_INSTALL_DIR`; pin a version with `OUTMUTE_VERSION`). Re-run to
+update. On Windows, grab the `windows-x64` zip from the
+[releases page](https://github.com/zetlen/outmute/releases).
+
+## Setup (from source)
 
 ```sh
 bun install
