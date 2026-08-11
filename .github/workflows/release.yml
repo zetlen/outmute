@@ -1,0 +1,112 @@
+name: Release
+
+# Published releases build the binaries and refresh the hosted web app.
+# workflow_dispatch is for rehearsal: it builds and packages everything and
+# leaves the archives as workflow artifacts, but uploads nothing to a release.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.event.release.tag_name || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  binaries:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+
+      - name: Resolve version
+        id: version
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version=$(bun --print 'require("./package.json").version')
+          if [ -n "$TAG" ] && [ "$TAG" != "v$version" ]; then
+            echo "::error::release tag $TAG does not match package.json version $version"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Compile binaries
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -eux
+          for target in linux-x64 darwin-arm64 windows-x64; do
+            case "$target" in
+              windows-x64) bin=outmute.exe ;;
+              *) bin=outmute ;;
+            esac
+            bun build --compile --target="bun-$target" \
+              --define OUTMUTE_VERSION="\"$VERSION\"" \
+              src/cli.ts --outfile "build/$target/$bin"
+          done
+
+      - name: Package archives
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -eux
+          mkdir -p assets
+          tar -czf "assets/outmute-v$VERSION-linux-x64.tar.gz" -C build/linux-x64 outmute
+          tar -czf "assets/outmute-v$VERSION-macos-arm64.tar.gz" -C build/darwin-arm64 outmute
+          (cd build/windows-x64 && zip -q "$GITHUB_WORKSPACE/assets/outmute-v$VERSION-windows-x64.zip" outmute.exe)
+          (cd assets && sha256sum outmute-v"$VERSION"-* > SHASUMS256.txt)
+          cat assets/SHASUMS256.txt
+
+      - name: Smoke-test the linux binary
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -eux
+          [ "$(build/linux-x64/outmute --version)" = "$VERSION" ]
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: assets/
+          retention-days: 7
+
+      - name: Upload release assets
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$TAG" assets/* --clobber
+
+  pages:
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+
+      - name: Build web app
+        run: bun run build:web
+
+      - name: Add install.sh and disable Jekyll
+        run: |
+          cp install.sh dist/install.sh
+          touch dist/.nojekyll
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deploy
+        uses: actions/deploy-pages@v4
