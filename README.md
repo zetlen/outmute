@@ -64,8 +64,8 @@ outmute report.csv --no-input \
 terminal, e.g. in CI). Run `outmute --help` for all flags: grouping
 (`-g description|project|day|entry`), non-billable entries (`--all`),
 per-entry appendix page (`--appendix`), input format (`--input-format`),
-currency, net days, rounding, accent color (`--accent "#7a2048"`), typeface
-(`--font sans|serif|mono`), paper size, and more.
+currency, net days, rounding, accent color (`--accent "#7a2048"`), typefaces
+(`--font`, `--font-heading`, `--font-body`), paper size, and more.
 
 ## Config file
 
@@ -78,13 +78,43 @@ per project name with `"default"` covering the rest.
 
 ## Fonts
 
-Three embedded typefaces (`--font`, or the Typeface dropdown): **Inter**
-(sans, default), **Source Serif 4**, and **JetBrains Mono** — all
-OFL-licensed, from [Fontsource](https://fontsource.org/). Coverage spans
-Latin, Latin Extended, Cyrillic, Greek, and Vietnamese, with per-character
-fallback across subsets (serif/mono additionally fall back to Inter for
-glyphs they lack, e.g. ₹); only the glyphs actually used are embedded, so
-PDFs stay small. Scripts outside that coverage (e.g. CJK) render as `?`.
+Two independent slots: **heading** (the INVOICE title, the sender and client
+names, and the small uppercase labels) and **body** (everything else). Set
+them with `--font-heading` and `--font-body`, or both at once with `--font`;
+a per-slot flag wins over `--font`. The browser version has a dropdown for
+each. Both default to sans.
+
+Three typefaces are embedded: **Inter** (`sans`, the default), **Source Serif
+4** (`serif`), and **JetBrains Mono** (`mono`) — all OFL-licensed, from
+[Fontsource](https://fontsource.org/). Coverage spans Latin, Latin Extended,
+Cyrillic, Greek, and Vietnamese, with per-character fallback across subsets
+(serif/mono additionally fall back to Inter for glyphs they lack, e.g. ₹);
+only the glyphs actually used are embedded, so PDFs stay small. Scripts
+outside that coverage (e.g. CJK) render as `?`.
+
+A slot can also take your own **TTF or OTF** files (WOFF/WOFF2 are rejected —
+convert them first). Pass one file, or a comma-separated `regular,bold` pair;
+with one file it serves both weights, with no synthetic bolding. Inter is
+appended to a custom font's fallback chain, so glyphs it lacks still render.
+
+```sh
+outmute report.csv --font-heading "fonts/Display.ttf,fonts/Display-Bold.ttf" --font-body serif
+```
+
+In the config file, `invoice.fonts` holds the two slots; paths there are
+relative to the config file, while paths on the command line are relative to
+the working directory.
+
+```json
+{
+  "invoice": {
+    "fonts": {
+      "heading": { "regular": "fonts/Display.ttf", "bold": "fonts/Display-Bold.ttf" },
+      "body": "serif"
+    }
+  }
+}
+```
 
 ## Tests
 

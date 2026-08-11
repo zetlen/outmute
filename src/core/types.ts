@@ -1,4 +1,4 @@
-import type { FontFamily } from "./fonts";
+import { parseFontSlotsConfig, type FontSlots } from "./fonts";
 import type { TimeEntry } from "./timesheet";
 
 /** One invoice line item (a group of entries billed at the same rate). */
@@ -38,8 +38,12 @@ export interface InvoiceConfig {
     /** Accent color, #rrggbb. */
     accent: string;
     paper: "letter" | "a4";
-    /** Typeface: sans = Inter, serif = Source Serif 4, mono = JetBrains Mono. */
-    font: FontFamily;
+    /**
+     * Typeface per slot — `heading` styles the title, party names and section
+     * labels, `body` everything else. Each is a bundled family (sans = Inter,
+     * serif = Source Serif 4, mono = JetBrains Mono) or custom TTF/OTF files.
+     */
+    fonts: FontSlots;
   };
   /** Hourly rates by Clockify project name; "default" covers everything else. */
   rates: Record<string, number>;
@@ -92,7 +96,7 @@ export const DEFAULT_CONFIG: InvoiceConfig = {
     notes: "Thank you for your business. Please remit payment within {net_days} days.",
     accent: "#20509e",
     paper: "letter",
-    font: "sans",
+    fonts: { heading: "sans", body: "sans" },
   },
   rates: {},
 };
@@ -127,7 +131,7 @@ export function mergeConfig(partial: unknown): InvoiceConfig {
       notes: str(i.notes, d.notes),
       accent: /^#[0-9a-fA-F]{6}$/.test(i.accent ?? "") ? i.accent : d.accent,
       paper: i.paper === "a4" ? "a4" : "letter",
-      font: ["sans", "serif", "mono"].includes(i.font) ? i.font : d.font,
+      fonts: parseFontSlotsConfig(i.fonts, d.fonts),
     },
     rates,
   };

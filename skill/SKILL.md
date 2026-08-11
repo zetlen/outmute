@@ -37,7 +37,10 @@ Useful optional flags (full list: `--help`):
 - `-g description|project|day|entry` line-item grouping (default: description)
 - `--tax-percent <n>`, `--net-days <n>`, `--currency <symbol>`
 - `--all` include non-billable entries; `--appendix` per-entry detail page
-- `--accent "#rrggbb"` accent color, `--font sans|serif|mono`, `--paper letter|a4`
+- `--accent "#rrggbb"` accent color, `--paper letter|a4`
+- `--font-heading <v>` / `--font-body <v>` typeface per slot (heading = title,
+  names, labels), or `--font <v>` for both; each value is `sans|serif|mono` or
+  a TTF/OTF path, optionally `regular.ttf,bold.ttf`
 
 ## After generating
 
