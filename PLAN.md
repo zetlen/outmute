@@ -132,14 +132,14 @@ Prereq: CI from Session D has run at least once (check names must exist).
 CI check names (from `.github/workflows/ci.yml`, job ids = check names since
 there's no matrix): `fmt`, `lint`, `typecheck`, `test`, `pr-title`.
 
-- [ ] Repo merge settings: enable squash merge ONLY (disable merge commits
+- [x] Repo merge settings: enable squash merge ONLY (disable merge commits
       and rebase merges); enable auto-merge; enable "automatically delete
       head branches".
-- [ ] Ruleset on `main` (gh api /repos/zetlen/outmute/rulesets): require PRs
+- [x] Ruleset on `main` (gh api /repos/zetlen/outmute/rulesets): require PRs
       (0 approvals), require status checks (`fmt`, `lint`, `typecheck`,
       `test`, `pr-title`), require linear history, block force pushes and
       deletions, no bypass actors.
-- [ ] Verify: direct push to main is rejected; a trivial PR with green checks
+- [x] Verify: direct push to main is rejected; a trivial PR with green checks
       can auto-merge via squash.
 - [ ] From here on, ALL changes land via squash-merged PRs with
       conventional-commit titles (`feat:`/`fix:`/`chore:`/`ci:`/...).
