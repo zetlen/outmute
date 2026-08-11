@@ -1,5 +1,12 @@
 # Agent instructions for outmute
 
+## Documentation
+
+No emojis in documentation. That covers `README.md`, this file, everything
+under `docs/`, the issue and pull request templates, and any other Markdown
+in the repo. Use plain prose, headings, and code fences instead — no emoji
+section markers, no emoji status bullets.
+
 ## Agent skills
 
 ### Issue tracker
