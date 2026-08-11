@@ -17,6 +17,7 @@ import { computeInvoice, InvoiceError } from "./core/invoice";
 import { renderInvoicePdf } from "./core/pdf";
 import { fmtDay, fmtHours, money, symbolForCurrency } from "./core/format";
 import { DEFAULT_CONFIG, mergeConfig, type GroupBy, type InvoiceConfig } from "./core/types";
+import index from "./web/index.html";
 
 const PROG = "outmute";
 const GROUPS: GroupBy[] = ["description", "project", "day", "entry"];
@@ -266,8 +267,6 @@ function applyOverrides(config: InvoiceConfig, o: Record<string, string | undefi
 // ---- Web server & Claude skill ----
 
 async function serveWeb(port: number): Promise<void> {
-  // Dynamic import so ordinary CLI runs never touch the web bundle.
-  const index = (await import("./web/index.html")).default;
   const server = Bun.serve({ port, routes: { "/*": index } });
   console.log(`${PROG}: invoice generator running at ${server.url} — Ctrl-C to stop`);
 }

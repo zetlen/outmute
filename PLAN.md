@@ -103,12 +103,12 @@ keep this file updated in the same commit/PR.
   - `src/core/format.test.ts`: `fmtDay`, `addDays` (month/year rollover),
     `parseNumber` (1.234,56 vs 1,234.56, currency-symbol stripping),
     `symbolForCurrency` (known code, unknown code passthrough, undefined).
-- [ ] Change `src/cli.ts` serve path to a static top-level
+- [x] Change `src/cli.ts` serve path to a static top-level
       `import index from "./web/index.html"` and drop the dynamic import +
       its laziness comment. Verify: `bun build --compile src/cli.ts --outfile /tmp/outmute-smoke`
       then `/tmp/outmute-smoke serve --port 4599` + curl returns the app, and
       PDF generation from the compiled binary works.
-- [ ] Commits: `test: cover core parsing, invoice math, and formatting` and
+- [x] Commits: `test: cover core parsing, invoice math, and formatting` and
       `fix: static web import so serve works in compiled binaries`.
 
 ## Session D — version plumbing + CI (model: mid)
