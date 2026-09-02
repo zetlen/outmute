@@ -238,7 +238,7 @@ Run the CLI from source with `bun run cli` (equivalent to
 Web version:
 
 ```sh
-bun run web            # dev server
+bun run web            # dev server on port 3000, all interfaces
 bun run build:web      # static build in dist/ — host it anywhere
 ```
 
