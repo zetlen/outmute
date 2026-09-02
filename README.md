@@ -124,9 +124,24 @@ commented starter; `-c path` uses another file; `--save-config` writes the
 effective settings back). A config file from before this tool switched to
 TOML — `~/.config/outmute/config.json`, or the pre-rename
 `~/.config/clockify-invoice/config.json` — is still read if no `config.toml`
-exists yet; `-c path.json` also still works. Flags override the config; the
-CSV's "Billable Rate" column overrides the `rates` map, which is used as
-fallback per project name with `"default"` covering the rest.
+exists yet; `-c path.json` also still works. Flags override the config.
+
+Everything that varies by project lives in one `[projects]` table keyed by
+the project name in the time report: the hourly `rate`, and the `items` and
+`subtotal` display switches described below. `default` covers projects not
+listed, and a named entry only needs the keys it changes. The CSV's
+"Billable Rate" column, when present, beats any configured rate.
+
+```toml
+[projects.default]
+rate = 130
+
+[projects."Awards"]
+rate = 50
+```
+
+Keys outmute doesn't recognize are reported as warnings rather than
+silently ignored.
 
 ## Per-project rows and subtotals
 
@@ -147,6 +162,7 @@ project name, with a named entry only listing the keys it changes:
 
 ```toml
 [projects.default]
+rate = 130
 items = true
 subtotal = true
 

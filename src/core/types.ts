@@ -12,8 +12,10 @@ export interface Line {
 
 export type GroupBy = "description" | "project" | "day" | "entry";
 
-/** How one project's entries appear on the invoice. */
-export interface ProjectDisplay {
+/** Per-project settings: how a project is billed and how it appears on the invoice. */
+export interface ProjectSettings {
+  /** Hourly rate for entries that carry none of their own. */
+  rate?: number;
   /**
    * Show the project's itemized rows. When false the project collapses to a
    * single summary row (one per rate, if its entries are billed at different
@@ -75,13 +77,11 @@ export interface InvoiceConfig {
      */
     fonts: FontSlots;
   };
-  /** Hourly rates by Clockify project name; "default" covers everything else. */
-  rates: Record<string, number>;
   /**
-   * Display settings by project name; "default" covers everything else, and a
-   * named entry only needs the keys it changes.
+   * Settings by project name as it appears in the time report; "default"
+   * covers everything else, and a named entry only needs the keys it changes.
    */
-  projects: Record<string, Partial<ProjectDisplay>>;
+  projects: Record<string, Partial<ProjectSettings>>;
 }
 
 export interface InvoiceOptions {
@@ -121,7 +121,26 @@ export interface Invoice {
   warnings: string[];
 }
 
-const DEFAULT_DISPLAY: ProjectDisplay = { items: true, subtotal: false };
+const DEFAULT_PROJECT: ProjectSettings = { items: true, subtotal: false };
+
+/** Keys mergeConfig understands, for reporting the ones it doesn't. */
+const KNOWN_KEYS = {
+  top: ["$schema", "from", "to", "invoice", "projects"],
+  party: ["name", "lines"],
+  invoice: [
+    "numberPrefix",
+    "netDays",
+    "currency",
+    "taxPercent",
+    "taxLabel",
+    "roundUpMinutes",
+    "notes",
+    "accent",
+    "paper",
+    "fonts",
+  ],
+  project: ["rate", "items", "subtotal"],
+};
 
 export const DEFAULT_CONFIG: InvoiceConfig = {
   from: { name: "Your Name", lines: [] },
@@ -138,30 +157,48 @@ export const DEFAULT_CONFIG: InvoiceConfig = {
     paper: "letter",
     fonts: { heading: "sans", body: "sans" },
   },
-  rates: {},
-  projects: { default: DEFAULT_DISPLAY },
+  projects: { default: DEFAULT_PROJECT },
 };
 
-/** Deep-merge a partial config over the defaults. */
-export function mergeConfig(partial: unknown): InvoiceConfig {
+/**
+ * Deep-merge a partial config over the defaults. Keys that mean nothing to
+ * outmute are reported through `warn`, since a misplaced key silently doing
+ * nothing is the most common way a config goes wrong.
+ */
+export function mergeConfig(
+  partial: unknown,
+  warn: (message: string) => void = () => {},
+): InvoiceConfig {
   const p = (partial ?? {}) as Record<string, any>;
+  const checkKeys = (obj: unknown, known: string[], where: string) => {
+    if (!obj || typeof obj !== "object" || Array.isArray(obj)) return;
+    const unknown = Object.keys(obj).filter((k) => !known.includes(k));
+    if (unknown.length) {
+      warn(
+        `ignoring unknown ${where} key${unknown.length === 1 ? "" : "s"} ` +
+          `${unknown.map((k) => JSON.stringify(k)).join(", ")} (known: ${known.join(", ")})`,
+      );
+    }
+  };
+  checkKeys(p, KNOWN_KEYS.top, "config");
+  checkKeys(p.from, KNOWN_KEYS.party, "[from]");
+  checkKeys(p.to, KNOWN_KEYS.party, "[to]");
+  checkKeys(p.invoice, KNOWN_KEYS.invoice, "[invoice]");
   const party = (raw: any, fallback: Party): Party => ({
     name: typeof raw?.name === "string" && raw.name.trim() ? raw.name : fallback.name,
     lines: Array.isArray(raw?.lines) ? raw.lines.map(String) : fallback.lines,
   });
-  const rates: Record<string, number> = {};
-  for (const [k, v] of Object.entries(p.rates ?? {})) {
-    const n = Number(v);
-    if (Number.isFinite(n)) rates[k] = n;
-  }
-  const projects: Record<string, Partial<ProjectDisplay>> = {};
+  const projects: Record<string, Partial<ProjectSettings>> = {};
+  const finite = (v: unknown) => v !== "" && v !== null && Number.isFinite(Number(v));
   for (const [k, raw] of Object.entries(p.projects ?? {})) {
     if (!raw || typeof raw !== "object") continue;
+    checkKeys(raw, KNOWN_KEYS.project, `[projects.${JSON.stringify(k)}]`);
     const v = raw as Record<string, unknown>;
-    const display: Partial<ProjectDisplay> = {};
-    if (typeof v.items === "boolean") display.items = v.items;
-    if (typeof v.subtotal === "boolean") display.subtotal = v.subtotal;
-    projects[k] = display;
+    const settings: Partial<ProjectSettings> = {};
+    if (finite(v.rate)) settings.rate = Number(v.rate);
+    if (typeof v.items === "boolean") settings.items = v.items;
+    if (typeof v.subtotal === "boolean") settings.subtotal = v.subtotal;
+    projects[k] = settings;
   }
   const d = DEFAULT_CONFIG.invoice;
   const i = p.invoice ?? {};
@@ -183,12 +220,11 @@ export function mergeConfig(partial: unknown): InvoiceConfig {
       paper: i.paper === "a4" ? "a4" : "letter",
       fonts: parseFontSlotsConfig(i.fonts, d.fonts),
     },
-    rates,
-    projects: { ...projects, default: { ...DEFAULT_DISPLAY, ...projects.default } },
+    projects: { ...projects, default: { ...DEFAULT_PROJECT, ...projects.default } },
   };
 }
 
-/** Resolve a project's display settings: named entry over "default" over built-in. */
-export function projectDisplay(config: InvoiceConfig, project: string): ProjectDisplay {
-  return { ...DEFAULT_DISPLAY, ...config.projects["default"], ...config.projects[project] };
+/** Resolve a project's settings: named entry over "default" over built-in. */
+export function projectSettings(config: InvoiceConfig, project: string): ProjectSettings {
+  return { ...DEFAULT_PROJECT, ...config.projects["default"], ...config.projects[project] };
 }

@@ -161,6 +161,31 @@ describe("computeInvoice project sections", () => {
 });
 
 describe("mergeConfig projects", () => {
+  test("a top-level rates table is not understood and is reported", () => {
+    const warnings: string[] = [];
+    const config = mergeConfig({ rates: { default: 5 } }, (m) => warnings.push(m));
+    expect(config.projects.default?.rate).toBeUndefined();
+    expect(warnings[0]).toContain('"rates"');
+  });
+
+  test("a project rate in [projects] is used for billing", () => {
+    const config = mergeConfig({ projects: { default: { rate: 5 }, Acme: { rate: "10" } } });
+    const invoice = computeInvoice(timesheet([entry({ project: "Acme" })]), config, options());
+    expect(invoice.lines[0]?.rate).toBe(10);
+  });
+
+  test("reports unknown keys instead of silently dropping them", () => {
+    const warnings: string[] = [];
+    mergeConfig({ rate: 1, invoice: { taxPct: 2 }, projects: { Acme: { hourly: 3 } } }, (m) =>
+      warnings.push(m),
+    );
+    expect(warnings).toHaveLength(3);
+    expect(warnings[0]).toContain('"rate"');
+    expect(warnings[1]).toContain('"taxPct"');
+    expect(warnings[2]).toContain('"hourly"');
+    expect(warnings[2]).toContain('[projects."Acme"]');
+  });
+
   test("always carries a complete default entry", () => {
     expect(mergeConfig({}).projects.default).toEqual({ items: true, subtotal: false });
     expect(mergeConfig({ projects: { default: { subtotal: true } } }).projects.default).toEqual({
@@ -178,7 +203,7 @@ describe("mergeConfig projects", () => {
 
 describe("computeInvoice rate resolution", () => {
   test("an entry's own rate beats the config rates", () => {
-    const config = mergeConfig({ rates: { Acme: 10, default: 5 } });
+    const config = mergeConfig({ projects: { Acme: { rate: 10 }, default: { rate: 5 } } });
     const invoice = computeInvoice(
       timesheet([entry({ project: "Acme", rate: 99 })]),
       config,
@@ -188,13 +213,13 @@ describe("computeInvoice rate resolution", () => {
   });
 
   test("a project rate beats the default rate", () => {
-    const config = mergeConfig({ rates: { Acme: 10, default: 5 } });
+    const config = mergeConfig({ projects: { Acme: { rate: 10 }, default: { rate: 5 } } });
     const invoice = computeInvoice(timesheet([entry({ project: "Acme" })]), config, options());
     expect(invoice.lines[0]?.rate).toBe(10);
   });
 
   test("falls back to the default rate when no project rate is set", () => {
-    const config = mergeConfig({ rates: { default: 5 } });
+    const config = mergeConfig({ projects: { default: { rate: 5 } } });
     const invoice = computeInvoice(timesheet([entry({ project: "Other" })]), config, options());
     expect(invoice.lines[0]?.rate).toBe(5);
   });

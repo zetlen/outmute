@@ -158,9 +158,9 @@ form.addEventListener("submit", async (e) => {
       paper: val("paper"),
       fonts: { heading: val("fontHeading"), body: val("fontBody") },
     },
-    rates: rate > 0 ? { default: rate } : {},
     projects: {
       default: {
+        ...(rate > 0 ? { rate } : {}),
         items: $<HTMLInputElement>("items").checked,
         subtotal: $<HTMLInputElement>("subtotals").checked,
       },

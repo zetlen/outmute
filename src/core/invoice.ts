@@ -1,5 +1,5 @@
 import {
-  projectDisplay,
+  projectSettings,
   type Invoice,
   type InvoiceConfig,
   type InvoiceOptions,
@@ -16,13 +16,13 @@ type PricedEntry = TimeEntry & { rate: number };
 
 function resolveRates(
   entries: TimeEntry[],
-  rates: Record<string, number>,
+  config: InvoiceConfig,
   warnings: string[],
 ): PricedEntry[] {
   const missing = new Set<string>();
   const priced = entries.map((entry): PricedEntry => {
     if (entry.rate !== undefined) return { ...entry, rate: entry.rate };
-    let configured = rates[entry.project] ?? rates["default"];
+    let configured = projectSettings(config, entry.project).rate;
     if (configured === undefined) {
       missing.add(entry.project || "(no project)");
       configured = 0;
@@ -31,7 +31,7 @@ function resolveRates(
   });
   if (missing.size) {
     warnings.push(
-      `no rate for project(s): ${[...missing].sort().join(", ")} — set them in the rates config`,
+      `no rate for project(s): ${[...missing].sort().join(", ")} — set rate under [projects] in the config`,
     );
   }
   return priced;
@@ -124,7 +124,7 @@ function buildSections(
     else byProject.set(entry.project, [entry]);
   }
   const displays = new Map(
-    [...byProject.keys()].map((project) => [project, projectDisplay(config, project)] as const),
+    [...byProject.keys()].map((project) => [project, projectSettings(config, project)] as const),
   );
   const sectioned = [...displays.values()].some((d) => !d.items || d.subtotal);
 
@@ -178,7 +178,7 @@ export function computeInvoice(
   if (!entries.length) throw new InvoiceError("the report has no time entries");
 
   // resolveRates copies, so the caller's timesheet is never mutated.
-  const priced = resolveRates(entries, config.rates, warnings);
+  const priced = resolveRates(entries, config, warnings);
   const sections = buildSections(priced, config, options.group);
   const lines = sections.flatMap((section) => section.lines);
 

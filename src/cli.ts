@@ -120,8 +120,7 @@ const JSON_CONFIG_TEMPLATE: unknown = {
   },
   to: { name: "Client, Inc.", lines: ["456 Client Avenue", "Métropole, ST 11111"] },
   invoice: { ...DEFAULT_CONFIG.invoice, fonts: { ...DEFAULT_CONFIG.invoice.fonts } },
-  rates: { default: 100 },
-  projects: { default: { ...DEFAULT_CONFIG.projects.default } },
+  projects: { default: { rate: 100, ...DEFAULT_CONFIG.projects.default } },
 };
 
 const defaultInvoice = DEFAULT_CONFIG.invoice;
@@ -162,19 +161,21 @@ paper = "${defaultInvoice.paper}" # letter | a4
 heading = "sans"
 body = "sans"
 
-# Hourly rates by Clockify project name; "default" covers everything else.
-[rates]
-default = 100
-
-# How each project's entries appear; "default" covers projects not listed
-# and a named entry only needs the keys it changes.
-# items = false collapses the project into a single summary row (one per
-# rate, if its entries are billed at different rates, plus a subtotal).
-# subtotal = true adds a subtotal row after the project's itemized rows.
+# Per-project settings, keyed by the project name in the time report.
+# "default" covers every project not listed, and a named entry only needs
+# the keys it changes.
+#   rate     hourly rate for entries that carry none of their own
+#   items    false collapses the project into a single summary row (one per
+#            rate, if its entries are billed at different rates, plus a
+#            subtotal) instead of listing its itemized rows
+#   subtotal true adds a subtotal row after the project's itemized rows
 [projects.default]
+rate = 100
 items = true
 subtotal = false
+
 # [projects."Retainer Client"]
+# rate = 80
 # items = false
 `;
 
@@ -352,7 +353,7 @@ function loadConfigFile(
   try {
     const text = readFileSync(path, "utf8");
     const raw = isJsonConfigPath(path) ? JSON.parse(text) : parseToml(text);
-    const config = mergeConfig(raw);
+    const config = mergeConfig(raw, (message) => warn(`${path}: ${message}`));
     // Custom font paths in a config file are relative to that file.
     config.invoice.fonts = anchorFontPaths(config.invoice.fonts, (p) => resolve(dirname(path), p));
     return { config, found: true };
@@ -388,7 +389,8 @@ function applyOverrides(config: InvoiceConfig, o: Overrides): void {
   if (fromLines !== undefined) config.from.lines = list(fromLines);
   if (toName !== undefined) config.to.name = toName;
   if (toLines !== undefined) config.to.lines = list(toLines);
-  if (rate !== undefined) config.rates["default"] = Number(rate);
+  if (rate !== undefined)
+    config.projects["default"] = { ...config.projects["default"], rate: Number(rate) };
   if (currency !== undefined) config.invoice.currency = currency;
   if (taxPercent !== undefined) config.invoice.taxPercent = Number(taxPercent);
   if (taxLabel !== undefined) config.invoice.taxLabel = taxLabel;
@@ -583,12 +585,15 @@ async function main(): Promise<void> {
     config.to.lines = await askLines(rl, "Client address", config.to.lines);
 
     const needsRate = report.entries.some((e) => e.billable && e.rate === undefined);
-    if (needsRate && !(config.rates["default"] > 0)) {
-      config.rates["default"] = Number(
-        await ask(rl, "Default hourly rate (some entries have no billable rate)", {
-          validate: numberValidator,
-        }),
-      );
+    if (needsRate && !((config.projects["default"]?.rate ?? 0) > 0)) {
+      config.projects["default"] = {
+        ...config.projects["default"],
+        rate: Number(
+          await ask(rl, "Default hourly rate (some entries have no billable rate)", {
+            validate: numberValidator,
+          }),
+        ),
+      };
     }
     config.invoice.currency = await ask(rl, "Currency symbol", {
       fallback: config.invoice.currency || symbolForCurrency(report.currency) || "$",
