@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.0.0](https://github.com/zetlen/outmute/compare/v2.2.0...v3.0.0) (2026-09-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* a config's [rates] table is no longer read. Move each entry to [projects.<name>] rate = <n> (and rates.default to [projects.default]).
+
+### Features
+
+* per-project rows, subtotals and rates in one [projects] config table ([#33](https://github.com/zetlen/outmute/issues/33)) ([6bdc3d7](https://github.com/zetlen/outmute/commit/6bdc3d7f8f5fa179f17c0ec5415b7e8c0a1e1d7f))
+
 ## [2.2.0](https://github.com/zetlen/outmute/compare/v2.1.2...v2.2.0) (2026-08-11)
 
 
