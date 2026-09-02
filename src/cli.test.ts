@@ -92,7 +92,7 @@ const CONFIG = {
   from: { name: "Config Sender", lines: ["1 Config Way"] },
   to: { name: "Config Client", lines: ["2 Client Road"] },
   invoice: { numberPrefix: "ACME-", currency: "$" },
-  rates: { default: 100 },
+  projects: { default: { rate: 100 } },
 };
 
 describe("cli happy path", () => {
@@ -311,7 +311,7 @@ describe("cli config precedence (JSON, still read for configs from before TOML)"
 
     expect(result.code).toBe(0);
     // Neither the config's 100 nor --rate 1 displaces the CSV's own rates;
-    // rates.default only fills in entries that have none.
+    // the default project rate only fills in entries that have none.
     expect(result.stdout).toContain("$1,100.00");
   }, 30_000);
 });
@@ -387,7 +387,61 @@ describe("cli config precedence (TOML)", () => {
     const saved = parseToml(readFileSync(savedPath, "utf8")) as any;
     expect(saved.from.name).toBe("Jane Dev");
     expect(saved.to.name).toBe("Acme Corp");
-    expect(saved.rates.default).toBe(150);
+    expect(saved.projects.default.rate).toBe(150);
+    expect(saved.rates).toBeUndefined();
+  }, 30_000);
+});
+
+describe("cli project display settings", () => {
+  test("--subtotals keeps every line item; --no-items collapses each project", async () => {
+    const withSubtotals = runCli(
+      SAMPLE,
+      "--no-input",
+      "--rate",
+      "100",
+      "--subtotals",
+      "-o",
+      "s.pdf",
+    );
+    expect(withSubtotals.code).toBe(0);
+    expect(withSubtotals.stdout).toContain("3 line item(s)");
+    expect((await inspectPdf(join(home, "s.pdf"))).pages).toBe(1);
+
+    const collapsed = runCli(SAMPLE, "--no-input", "--rate", "100", "--no-items", "-o", "c.pdf");
+    expect(collapsed.code).toBe(0);
+    expect(collapsed.stdout).toContain("2 line item(s)");
+    expect(collapsed.stdout).toContain("$1,250.00");
+  }, 30_000);
+
+  test("a config can collapse one project by name while --items restores the default", async () => {
+    const configPath = writeTomlConfig({
+      ...CONFIG,
+      projects: { "Website Redesign": { items: false } },
+    });
+    const fromConfig = runCli(SAMPLE, "--no-input", "-c", configPath, "-o", "a.pdf");
+    expect(fromConfig.code).toBe(0);
+    // Website Redesign's two descriptions fold into one row; API Integration keeps its one.
+    expect(fromConfig.stdout).toContain("2 line item(s)");
+
+    // --items only sets the default, so the named override still applies.
+    const withFlag = runCli(SAMPLE, "--no-input", "-c", configPath, "--items", "-o", "b.pdf");
+    expect(withFlag.stdout).toContain("2 line item(s)");
+  }, 30_000);
+
+  test("a misplaced config key is reported on stderr, not silently ignored", () => {
+    const configPath = writeTomlConfig({ ...CONFIG, projects: { Acme: { rates: 50 } } });
+    const result = runCli(SAMPLE, "--no-input", "-c", configPath, "-o", "w.pdf");
+    expect(result.code).toBe(0);
+    expect(result.stderr).toContain('unknown [projects."Acme"] key "rates"');
+  }, 30_000);
+
+  test("--save-config round-trips the project display settings", () => {
+    const result = runCli(SAMPLE, "--no-input", "--rate", "1", "--subtotals", "--save-config");
+    expect(result.code).toBe(0);
+    const saved = parseToml(
+      readFileSync(join(home, ".config", "outmute", "config.toml"), "utf8"),
+    ) as any;
+    expect(saved.projects.default).toEqual({ rate: 1, items: true, subtotal: true });
   }, 30_000);
 });
 

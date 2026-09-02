@@ -111,10 +111,11 @@ outmute report.csv --no-input \
 
 `--no-input` guarantees no prompts (it's also implied when stdin isn't a
 terminal, e.g. in CI). Run `outmute --help` for all flags: grouping
-(`-g description|project|day|entry`), non-billable entries (`--all`),
-per-entry appendix page (`--appendix`), input format (`--input-format`),
-currency, net days, rounding, accent color (`--accent "#7a2048"`), typefaces
-(`--font`, `--font-heading`, `--font-body`), paper size, and more.
+(`-g description|project|day|entry`), per-project subtotals and summary rows
+(`--subtotals`, `--no-items`), non-billable entries (`--all`), per-entry
+appendix page (`--appendix`), input format (`--input-format`), currency, net
+days, rounding, accent color (`--accent "#7a2048"`), typefaces (`--font`,
+`--font-heading`, `--font-body`), paper size, and more.
 
 ## Config file
 
@@ -123,9 +124,54 @@ commented starter; `-c path` uses another file; `--save-config` writes the
 effective settings back). A config file from before this tool switched to
 TOML — `~/.config/outmute/config.json`, or the pre-rename
 `~/.config/clockify-invoice/config.json` — is still read if no `config.toml`
-exists yet; `-c path.json` also still works. Flags override the config; the
-CSV's "Billable Rate" column overrides the `rates` map, which is used as
-fallback per project name with `"default"` covering the rest.
+exists yet; `-c path.json` also still works. Flags override the config.
+
+Everything that varies by project lives in one `[projects]` table keyed by
+the project name in the time report: the hourly `rate`, and the `items` and
+`subtotal` display switches described below. `default` covers projects not
+listed, and a named entry only needs the keys it changes. The CSV's
+"Billable Rate" column, when present, beats any configured rate.
+
+```toml
+[projects.default]
+rate = 130
+
+[projects."Awards"]
+rate = 50
+```
+
+Keys outmute doesn't recognize are reported as warnings rather than
+silently ignored.
+
+## Per-project rows and subtotals
+
+By default the line items are one flat, date-ordered list. Two switches
+change how each project's entries appear:
+
+- **Subtotals** (`--subtotals`, or the "Add a subtotal row per project"
+  checkbox) block the line items by project, with the project name as a
+  heading and a subtotal row after its entries.
+- **Hiding itemized rows** (`--no-items`, or unchecking "Show itemized rows
+  per project") collapses a project into a single summary row carrying its
+  name, hours, rate, and amount. A project billed at several rates gets one
+  row per rate plus a subtotal.
+
+`--no-subtotals` and `--items` turn either back off when the config file has
+them on. Both flags set the defaults; the config file can also set them per
+project name, with a named entry only listing the keys it changes:
+
+```toml
+[projects.default]
+rate = 130
+items = true
+subtotal = true
+
+[projects."Retainer Client"]
+items = false
+```
+
+Whenever any project deviates from `items = true, subtotal = false`, the
+whole invoice is sectioned by project in order of first activity.
 
 ## Fonts
 
@@ -208,7 +254,7 @@ Run the CLI from source with `bun run cli` (equivalent to
 Web version:
 
 ```sh
-bun run web            # dev server
+bun run web            # dev server on port 3000, all interfaces
 bun run build:web      # static build in dist/ — host it anywhere
 ```
 
