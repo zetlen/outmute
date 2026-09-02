@@ -12,6 +12,36 @@ export interface Line {
 
 export type GroupBy = "description" | "project" | "day" | "entry";
 
+/** How one project's entries appear on the invoice. */
+export interface ProjectDisplay {
+  /**
+   * Show the project's itemized rows. When false the project collapses to a
+   * single summary row (one per rate, if its entries are billed at different
+   * rates, followed by a subtotal).
+   */
+  items: boolean;
+  /** Add a subtotal row after the project's itemized rows. */
+  subtotal: boolean;
+}
+
+/**
+ * A block of line items. When any project's display settings deviate from
+ * the defaults the invoice is sectioned, with one block per project in
+ * order of first activity; otherwise a single untitled block holds every
+ * line in date order.
+ */
+export interface Section {
+  /** Project name, drawn as a heading above itemized rows; "" when unsectioned. */
+  title: string;
+  lines: Line[];
+  /** The rows are project summaries rather than itemized entries. */
+  summarized: boolean;
+  /** Draw a subtotal row after the lines. */
+  subtotal: boolean;
+  hours: number;
+  amount: number;
+}
+
 export interface Party {
   name: string;
   /** Address, email, phone... rendered one per line under the name. */
@@ -47,6 +77,11 @@ export interface InvoiceConfig {
   };
   /** Hourly rates by Clockify project name; "default" covers everything else. */
   rates: Record<string, number>;
+  /**
+   * Display settings by project name; "default" covers everything else, and a
+   * named entry only needs the keys it changes.
+   */
+  projects: Record<string, Partial<ProjectDisplay>>;
 }
 
 export interface InvoiceOptions {
@@ -64,7 +99,10 @@ export interface InvoiceOptions {
 /** Everything the renderer needs to draw the invoice. */
 export interface Invoice {
   config: InvoiceConfig;
+  /** Every row drawn in the line item table, in order. */
   lines: Line[];
+  /** The same rows, blocked by project. */
+  sections: Section[];
   /** The billed entries, for the appendix. */
   entries: TimeEntry[];
   number: string;
@@ -83,6 +121,8 @@ export interface Invoice {
   warnings: string[];
 }
 
+const DEFAULT_DISPLAY: ProjectDisplay = { items: true, subtotal: false };
+
 export const DEFAULT_CONFIG: InvoiceConfig = {
   from: { name: "Your Name", lines: [] },
   to: { name: "Client", lines: [] },
@@ -99,6 +139,7 @@ export const DEFAULT_CONFIG: InvoiceConfig = {
     fonts: { heading: "sans", body: "sans" },
   },
   rates: {},
+  projects: { default: DEFAULT_DISPLAY },
 };
 
 /** Deep-merge a partial config over the defaults. */
@@ -112,6 +153,15 @@ export function mergeConfig(partial: unknown): InvoiceConfig {
   for (const [k, v] of Object.entries(p.rates ?? {})) {
     const n = Number(v);
     if (Number.isFinite(n)) rates[k] = n;
+  }
+  const projects: Record<string, Partial<ProjectDisplay>> = {};
+  for (const [k, raw] of Object.entries(p.projects ?? {})) {
+    if (!raw || typeof raw !== "object") continue;
+    const v = raw as Record<string, unknown>;
+    const display: Partial<ProjectDisplay> = {};
+    if (typeof v.items === "boolean") display.items = v.items;
+    if (typeof v.subtotal === "boolean") display.subtotal = v.subtotal;
+    projects[k] = display;
   }
   const d = DEFAULT_CONFIG.invoice;
   const i = p.invoice ?? {};
@@ -134,5 +184,11 @@ export function mergeConfig(partial: unknown): InvoiceConfig {
       fonts: parseFontSlotsConfig(i.fonts, d.fonts),
     },
     rates,
+    projects: { ...projects, default: { ...DEFAULT_DISPLAY, ...projects.default } },
   };
+}
+
+/** Resolve a project's display settings: named entry over "default" over built-in. */
+export function projectDisplay(config: InvoiceConfig, project: string): ProjectDisplay {
+  return { ...DEFAULT_DISPLAY, ...config.projects["default"], ...config.projects[project] };
 }

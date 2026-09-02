@@ -100,7 +100,7 @@ const FIELD_IDS = [
   "fontBody",
   "notes",
 ] as const;
-const CHECKBOX_IDS = ["all", "appendix"] as const;
+const CHECKBOX_IDS = ["all", "appendix", "items", "subtotals"] as const;
 const STORAGE_KEY = "outmute-form";
 // Pre-rename key, read once as a fallback so saved forms survive the rename.
 const LEGACY_STORAGE_KEY = "clockify-invoice-form";
@@ -159,6 +159,12 @@ form.addEventListener("submit", async (e) => {
       fonts: { heading: val("fontHeading"), body: val("fontBody") },
     },
     rates: rate > 0 ? { default: rate } : {},
+    projects: {
+      default: {
+        items: $<HTMLInputElement>("items").checked,
+        subtotal: $<HTMLInputElement>("subtotals").checked,
+      },
+    },
   });
 
   generate.disabled = true;

@@ -39,6 +39,9 @@ Useful optional flags (full list: `--help`):
 - `-n <number>` invoice number (default: prefix + last entry date)
 - `-g description|project|day|entry` line-item grouping (default: description)
 - `--tax-percent <n>`, `--net-days <n>`, `--currency <symbol>`
+- `--subtotals` subtotal row per project; `--no-items` one summary row per
+  project instead of its itemized entries (per-project settings go in the
+  config file's `[projects."Name"]` tables)
 - `--all` include non-billable entries; `--appendix` per-entry detail page
 - `--accent "#rrggbb"` accent color, `--paper letter|a4`
 - `--font-heading <v>` / `--font-body <v>` typeface per slot (heading = title,

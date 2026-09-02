@@ -391,6 +391,52 @@ describe("cli config precedence (TOML)", () => {
   }, 30_000);
 });
 
+describe("cli project display settings", () => {
+  test("--subtotals keeps every line item; --no-items collapses each project", async () => {
+    const withSubtotals = runCli(
+      SAMPLE,
+      "--no-input",
+      "--rate",
+      "100",
+      "--subtotals",
+      "-o",
+      "s.pdf",
+    );
+    expect(withSubtotals.code).toBe(0);
+    expect(withSubtotals.stdout).toContain("3 line item(s)");
+    expect((await inspectPdf(join(home, "s.pdf"))).pages).toBe(1);
+
+    const collapsed = runCli(SAMPLE, "--no-input", "--rate", "100", "--no-items", "-o", "c.pdf");
+    expect(collapsed.code).toBe(0);
+    expect(collapsed.stdout).toContain("2 line item(s)");
+    expect(collapsed.stdout).toContain("$1,250.00");
+  }, 30_000);
+
+  test("a config can collapse one project by name while --items restores the default", async () => {
+    const configPath = writeTomlConfig({
+      ...CONFIG,
+      projects: { "Website Redesign": { items: false } },
+    });
+    const fromConfig = runCli(SAMPLE, "--no-input", "-c", configPath, "-o", "a.pdf");
+    expect(fromConfig.code).toBe(0);
+    // Website Redesign's two descriptions fold into one row; API Integration keeps its one.
+    expect(fromConfig.stdout).toContain("2 line item(s)");
+
+    // --items only sets the default, so the named override still applies.
+    const withFlag = runCli(SAMPLE, "--no-input", "-c", configPath, "--items", "-o", "b.pdf");
+    expect(withFlag.stdout).toContain("2 line item(s)");
+  }, 30_000);
+
+  test("--save-config round-trips the project display settings", () => {
+    const result = runCli(SAMPLE, "--no-input", "--rate", "1", "--subtotals", "--save-config");
+    expect(result.code).toBe(0);
+    const saved = parseToml(
+      readFileSync(join(home, ".config", "outmute", "config.toml"), "utf8"),
+    ) as any;
+    expect(saved.projects.default).toEqual({ items: true, subtotal: true });
+  }, 30_000);
+});
+
 describe("cli config format fallback", () => {
   test("reads an existing outmute/config.json when no config.toml exists yet", async () => {
     const dir = join(home, ".config", "outmute");

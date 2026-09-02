@@ -67,6 +67,10 @@ Config overrides (each replaces the corresponding config value):
       --currency <symbol>       --tax-percent <n>      --tax-label <text>
       --net-days <n>            --round-up <minutes>   --notes <text>
       --accent <#rrggbb>        --paper letter|a4
+      --subtotals               add a subtotal row after each project's line items
+      --no-items                collapse each project into a single summary row
+                                (--no-subtotals / --items turn either back off;
+                                per-project settings live in the config file)
 
 Typefaces (each value is sans|serif|mono — Inter, Source Serif 4, JetBrains
 Mono — or your own "regular.ttf" / "regular.ttf,bold.ttf", TTF or OTF only):
@@ -117,6 +121,7 @@ const JSON_CONFIG_TEMPLATE: unknown = {
   to: { name: "Client, Inc.", lines: ["456 Client Avenue", "Métropole, ST 11111"] },
   invoice: { ...DEFAULT_CONFIG.invoice, fonts: { ...DEFAULT_CONFIG.invoice.fonts } },
   rates: { default: 100 },
+  projects: { default: { ...DEFAULT_CONFIG.projects.default } },
 };
 
 const defaultInvoice = DEFAULT_CONFIG.invoice;
@@ -160,6 +165,17 @@ body = "sans"
 # Hourly rates by Clockify project name; "default" covers everything else.
 [rates]
 default = 100
+
+# How each project's entries appear; "default" covers projects not listed
+# and a named entry only needs the keys it changes.
+# items = false collapses the project into a single summary row (one per
+# rate, if its entries are billed at different rates, plus a subtotal).
+# subtotal = true adds a subtotal row after the project's itemized rows.
+[projects.default]
+items = true
+subtotal = false
+# [projects."Retainer Client"]
+# items = false
 `;
 
 interface Answers {
@@ -179,7 +195,9 @@ interface Answers {
   interactive: boolean;
 }
 
-function parseCliArgs(): { answers: Answers; overrides: Record<string, string | undefined> } {
+type Overrides = Record<string, string | boolean | undefined>;
+
+function parseCliArgs(): { answers: Answers; overrides: Overrides } {
   let parsed;
   try {
     parsed = parseArgs({
@@ -216,6 +234,10 @@ function parseCliArgs(): { answers: Answers; overrides: Record<string, string | 
         notes: { type: "string" },
         accent: { type: "string" },
         paper: { type: "string" },
+        items: { type: "boolean" },
+        "no-items": { type: "boolean" },
+        subtotals: { type: "boolean" },
+        "no-subtotals": { type: "boolean" },
       },
     });
   } catch (err) {
@@ -309,6 +331,8 @@ function parseCliArgs(): { answers: Answers; overrides: Record<string, string | 
       font: values.font,
       fontHeading: values["font-heading"],
       fontBody: values["font-body"],
+      items: values["no-items"] ? false : values.items ? true : undefined,
+      subtotals: values["no-subtotals"] ? false : values.subtotals ? true : undefined,
     },
   };
 }
@@ -337,33 +361,50 @@ function loadConfigFile(
   }
 }
 
-function applyOverrides(config: InvoiceConfig, o: Record<string, string | undefined>): void {
-  if (o.fromName !== undefined) config.from.name = o.fromName;
-  if (o.fromLines !== undefined)
-    config.from.lines = o.fromLines
+function applyOverrides(config: InvoiceConfig, o: Overrides): void {
+  const str = (key: string) => (typeof o[key] === "string" ? o[key] : undefined);
+  const bool = (key: string) => (typeof o[key] === "boolean" ? o[key] : undefined);
+  const list = (raw: string) =>
+    raw
       .split(";")
       .map((s) => s.trim())
       .filter(Boolean);
-  if (o.toName !== undefined) config.to.name = o.toName;
-  if (o.toLines !== undefined)
-    config.to.lines = o.toLines
-      .split(";")
-      .map((s) => s.trim())
-      .filter(Boolean);
-  if (o.rate !== undefined) config.rates["default"] = Number(o.rate);
-  if (o.currency !== undefined) config.invoice.currency = o.currency;
-  if (o.taxPercent !== undefined) config.invoice.taxPercent = Number(o.taxPercent);
-  if (o.taxLabel !== undefined) config.invoice.taxLabel = o.taxLabel;
-  if (o.netDays !== undefined) config.invoice.netDays = Number(o.netDays);
-  if (o.roundUp !== undefined) config.invoice.roundUpMinutes = Number(o.roundUp);
-  if (o.notes !== undefined) config.invoice.notes = o.notes;
-  if (o.accent !== undefined) config.invoice.accent = o.accent;
-  if (o.paper !== undefined) config.invoice.paper = o.paper as "letter" | "a4";
+  const fromName = str("fromName"),
+    fromLines = str("fromLines"),
+    toName = str("toName"),
+    toLines = str("toLines"),
+    rate = str("rate"),
+    currency = str("currency"),
+    taxPercent = str("taxPercent"),
+    taxLabel = str("taxLabel"),
+    netDays = str("netDays"),
+    roundUp = str("roundUp"),
+    notes = str("notes"),
+    accent = str("accent"),
+    paper = str("paper"),
+    items = bool("items"),
+    subtotals = bool("subtotals");
+  if (fromName !== undefined) config.from.name = fromName;
+  if (fromLines !== undefined) config.from.lines = list(fromLines);
+  if (toName !== undefined) config.to.name = toName;
+  if (toLines !== undefined) config.to.lines = list(toLines);
+  if (rate !== undefined) config.rates["default"] = Number(rate);
+  if (currency !== undefined) config.invoice.currency = currency;
+  if (taxPercent !== undefined) config.invoice.taxPercent = Number(taxPercent);
+  if (taxLabel !== undefined) config.invoice.taxLabel = taxLabel;
+  if (netDays !== undefined) config.invoice.netDays = Number(netDays);
+  if (roundUp !== undefined) config.invoice.roundUpMinutes = Number(roundUp);
+  if (notes !== undefined) config.invoice.notes = notes;
+  if (accent !== undefined) config.invoice.accent = accent;
+  if (paper !== undefined) config.invoice.paper = paper as "letter" | "a4";
+  if (items !== undefined) config.projects["default"] = { ...config.projects["default"], items };
+  if (subtotals !== undefined)
+    config.projects["default"] = { ...config.projects["default"], subtotal: subtotals };
   // CLI font paths are relative to the working directory, unlike config ones.
   try {
     config.invoice.fonts = resolveFontSlots(
       config.invoice.fonts,
-      { font: o.font, heading: o.fontHeading, body: o.fontBody },
+      { font: str("font"), heading: str("fontHeading"), body: str("fontBody") },
       (path) => resolve(path),
     );
   } catch (err) {

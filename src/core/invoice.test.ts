@@ -61,6 +61,121 @@ describe("computeInvoice grouping", () => {
   });
 });
 
+describe("computeInvoice project sections", () => {
+  const entries = [
+    entry({ day: "2026-08-01", project: "Acme", description: "Design", rate: 50 }),
+    entry({ day: "2026-08-02", project: "Beta", description: "Design", rate: 50 }),
+    entry({ day: "2026-08-03", project: "Acme", description: "Dev", rate: 50 }),
+  ];
+
+  test("with default display settings, one untitled section keeps lines in date order", () => {
+    const invoice = computeInvoice(timesheet(entries), mergeConfig({}), options());
+    expect(invoice.sections).toHaveLength(1);
+    expect(invoice.sections[0]?.title).toBe("");
+    expect(invoice.sections[0]?.subtotal).toBe(false);
+    expect(invoice.lines.map((l) => l.secondary)).toEqual(["Acme", "Beta", "Acme"]);
+  });
+
+  test("subtotals section the invoice by project and drop the project from line text", () => {
+    const config = mergeConfig({ projects: { default: { subtotal: true } } });
+    const invoice = computeInvoice(timesheet(entries), config, options());
+    expect(invoice.sections.map((s) => s.title)).toEqual(["Acme", "Beta"]);
+    expect(invoice.sections.map((s) => s.subtotal)).toEqual([true, true]);
+    expect(invoice.sections.map((s) => s.summarized)).toEqual([false, false]);
+    expect(invoice.sections[0]?.lines.map((l) => l.primary)).toEqual(["Design", "Dev"]);
+    expect(invoice.sections[0]?.lines.every((l) => l.secondary === "")).toBe(true);
+    expect(invoice.sections[0]?.hours).toBe(2);
+    expect(invoice.sections[0]?.amount).toBe(100);
+    expect(invoice.lines).toHaveLength(3);
+  });
+
+  test("hiding items collapses a project to one summary row", () => {
+    const config = mergeConfig({ projects: { default: { items: false } } });
+    const invoice = computeInvoice(timesheet(entries), config, options());
+    expect(invoice.sections.map((s) => s.summarized)).toEqual([true, true]);
+    expect(invoice.lines.map((l) => l.primary)).toEqual(["Acme", "Beta"]);
+    expect(invoice.lines.map((l) => l.hours)).toEqual([2, 1]);
+    // A single summary row is its own subtotal.
+    expect(invoice.sections.map((s) => s.subtotal)).toEqual([false, false]);
+    expect(invoice.subtotal).toBe(150);
+  });
+
+  test("a summarized project billed at several rates gets one row per rate plus a subtotal", () => {
+    const mixed = [
+      entry({ day: "2026-08-01", project: "Acme", description: "Support", rate: 50 }),
+      entry({ day: "2026-08-02", project: "Acme", description: "Rush", rate: 80, hours: 2 }),
+    ];
+    const config = mergeConfig({ projects: { Acme: { items: false } } });
+    const invoice = computeInvoice(timesheet(mixed), config, options());
+    expect(invoice.sections).toHaveLength(1);
+    expect(invoice.sections[0]?.lines.map((l) => l.rate)).toEqual([50, 80]);
+    expect(invoice.sections[0]?.subtotal).toBe(true);
+    expect(invoice.sections[0]?.amount).toBe(210);
+  });
+
+  test("a named project overrides the default and only for the keys it sets", () => {
+    const config = mergeConfig({
+      projects: { default: { subtotal: true }, Beta: { items: false } },
+    });
+    const invoice = computeInvoice(timesheet(entries), config, options());
+    const [acme, beta] = invoice.sections;
+    expect(acme?.summarized).toBe(false);
+    expect(acme?.subtotal).toBe(true);
+    expect(beta?.summarized).toBe(true);
+    expect(invoice.lines.map((l) => l.primary)).toEqual(["Design", "Dev", "Beta"]);
+  });
+
+  test("sections are ordered by first activity", () => {
+    const config = mergeConfig({ projects: { default: { subtotal: true } } });
+    const invoice = computeInvoice(timesheet([...entries].reverse()), config, options());
+    expect(invoice.sections.map((s) => s.title)).toEqual(["Acme", "Beta"]);
+  });
+
+  test("section totals use the rounded line hours, so they add up to the invoice subtotal", () => {
+    const config = mergeConfig({
+      invoice: { roundUpMinutes: 30 },
+      projects: { default: { subtotal: true } },
+    });
+    const invoice = computeInvoice(
+      timesheet([
+        entry({ project: "Acme", description: "A", hours: 0.1, rate: 100 }),
+        entry({ project: "Beta", description: "B", hours: 0.6, rate: 100 }),
+      ]),
+      config,
+      options(),
+    );
+    expect(invoice.sections.map((s) => s.hours)).toEqual([0.5, 1]);
+    expect(invoice.subtotal).toBe(150);
+    expect(invoice.totalHours).toBe(1.5);
+  });
+
+  test("entries without a project get a labelled section", () => {
+    const config = mergeConfig({ projects: { default: { subtotal: true } } });
+    const invoice = computeInvoice(
+      timesheet([entry({ project: "", rate: 10 })]),
+      config,
+      options(),
+    );
+    expect(invoice.sections[0]?.title).toBe("(no project)");
+  });
+});
+
+describe("mergeConfig projects", () => {
+  test("always carries a complete default entry", () => {
+    expect(mergeConfig({}).projects.default).toEqual({ items: true, subtotal: false });
+    expect(mergeConfig({ projects: { default: { subtotal: true } } }).projects.default).toEqual({
+      items: true,
+      subtotal: true,
+    });
+  });
+
+  test("keeps only boolean keys of named entries", () => {
+    const config = mergeConfig({ projects: { Acme: { items: "no", subtotal: true }, Bad: 3 } });
+    expect(config.projects.Acme).toEqual({ subtotal: true });
+    expect(config.projects.Bad).toBeUndefined();
+  });
+});
+
 describe("computeInvoice rate resolution", () => {
   test("an entry's own rate beats the config rates", () => {
     const config = mergeConfig({ rates: { Acme: 10, default: 5 } });

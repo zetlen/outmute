@@ -109,6 +109,28 @@ test("accepts a CSV dropped onto the dropzone", async ({ page }) => {
   await expect(page.locator("#status")).toContainText("$1,875.00");
 });
 
+test("the project display checkboxes reach the invoice", async ({ page }) => {
+  await page.setInputFiles("#file", SAMPLE);
+  await fillInvoiceForm(page);
+  await expect(page.locator("#items")).toBeChecked();
+  await page.uncheck("#items");
+  await page.check("#subtotals");
+
+  const downloadPromise = page.waitForEvent("download");
+  await page.click("#generate");
+  const bytes = readFileSync(await (await downloadPromise).path());
+  expect(bytes.subarray(0, 5).toString("latin1")).toBe("%PDF-");
+
+  // Hiding itemized rows collapses the sample's 2 projects to one row each.
+  await expect(page.locator("#status")).toContainText("2 line item(s)");
+  await expect(page.locator("#status")).toContainText("$1,875.00");
+
+  // The choice survives a reload via localStorage.
+  await page.reload();
+  await expect(page.locator("#items")).not.toBeChecked();
+  await expect(page.locator("#subtotals")).toBeChecked();
+});
+
 test("reports an unrecognized CSV and leaves Generate disabled", async ({ page }) => {
   await page.setInputFiles("#file", MALFORMED);
 

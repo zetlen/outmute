@@ -1,5 +1,5 @@
 import { PDFDocument, PDFPage, rgb, type RGB } from "pdf-lib";
-import type { Invoice } from "./types";
+import type { Invoice, Line } from "./types";
 import { fmtDay, fmtHours, money } from "./format";
 import { embedFonts, Face } from "./fonts";
 
@@ -229,16 +229,22 @@ export async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
   p.ensure(80);
   mainHeader();
 
-  for (const line of inv.lines) {
-    const descWidth = cols.desc.w - 8;
+  const descWidth = cols.desc.w - 8;
+  const measureRow = (line: Line) => {
     const primaryLines = wrap(line.primary, regular, 9.5, descWidth);
     const secondaryLines = line.secondary ? wrap(line.secondary, regular, 8.5, descWidth) : [];
-    const rowHeight = primaryLines.length * 12 + secondaryLines.length * 11 + 10;
-    if (p.ensure(rowHeight)) mainHeader();
-
+    return {
+      primaryLines,
+      secondaryLines,
+      height: primaryLines.length * 12 + secondaryLines.length * 11 + 10,
+    };
+  };
+  const drawRow = (line: Line, face: Face) => {
+    const { primaryLines, secondaryLines, height } = measureRow(line);
+    if (p.ensure(height)) mainHeader();
     const rowTop = p.y;
     for (const text of primaryLines) {
-      p.text(text, cols.desc.x, body);
+      p.text(text, cols.desc.x, { ...body, face });
       p.y -= 12;
     }
     for (const text of secondaryLines) {
@@ -253,6 +259,31 @@ export async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
     p.y = rowBottom - 4;
     p.hline(MARGIN, p.right, 0.6, RULE, 4);
     p.y -= 6;
+  };
+
+  for (const section of inv.sections) {
+    const heading = section.title && !section.summarized;
+    if (heading) {
+      // Keep the heading with at least its first row.
+      const first = section.lines[0];
+      if (p.ensure(17 + (first ? measureRow(first).height : 0))) mainHeader();
+      p.y -= 3;
+      p.text(section.title, cols.desc.x, { face: bold, size: 9.5, color: INK });
+      p.y -= 14;
+    }
+    for (const line of section.lines) drawRow(line, section.summarized ? bold : regular);
+    if (section.subtotal) {
+      if (p.ensure(22)) mainHeader();
+      const subtotalStyle: Style = { face: bold, size: 9, color: INK };
+      p.text(`${section.title} subtotal`, cols.desc.x, { face: regular, size: 8.5, color: MUTED });
+      p.textRight(fmtHours(section.hours), cols.hours.right, subtotalStyle);
+      p.textRight(money(sym, section.amount), cols.amount.right, subtotalStyle);
+      p.y -= 4;
+      p.hline(MARGIN, p.right, 0.6, RULE, -4);
+      p.y -= 10;
+    } else if (heading) {
+      p.y -= 4;
+    }
   }
 
   // ---- Totals ----
