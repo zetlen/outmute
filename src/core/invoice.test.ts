@@ -278,6 +278,51 @@ describe("computeInvoice tax", () => {
   });
 });
 
+describe("computeInvoice fees", () => {
+  const fees = [
+    { description: "Award", amount: 50 },
+    { description: "Travel", amount: 25.5, day: "2026-08-20" },
+  ];
+
+  test("adds fees to the subtotal but not to the hours", () => {
+    const invoice = computeInvoice(
+      timesheet([entry({ hours: 2, rate: 100 })]),
+      mergeConfig({}),
+      options({ fees }),
+    );
+    expect(invoice.fees).toEqual(fees);
+    expect(invoice.feesTotal).toBe(75.5);
+    expect(invoice.subtotal).toBe(275.5);
+    expect(invoice.totalHours).toBe(2);
+    expect(invoice.lines).toHaveLength(1);
+  });
+
+  test("taxes fees along with time", () => {
+    const invoice = computeInvoice(
+      timesheet([entry({ hours: 1, rate: 50 })]),
+      mergeConfig({ invoice: { taxPercent: 10 } }),
+      options({ fees: [{ description: "Award", amount: 50 }] }),
+    );
+    expect(invoice.tax).toBe(10);
+    expect(invoice.total).toBe(110);
+  });
+
+  test("fee dates don't move the billing period", () => {
+    const invoice = computeInvoice(
+      timesheet([entry({ day: "2026-08-01", rate: 50 })]),
+      mergeConfig({}),
+      options({ fees }),
+    );
+    expect(invoice.periodEnd).toBe("2026-08-01");
+  });
+
+  test("no fees by default", () => {
+    const invoice = computeInvoice(timesheet([entry({ rate: 50 })]), mergeConfig({}), options());
+    expect(invoice.fees).toEqual([]);
+    expect(invoice.feesTotal).toBe(0);
+  });
+});
+
 describe("computeInvoice non-billable filtering", () => {
   test("filters out non-billable entries and warns", () => {
     const entries = [entry({ billable: true, rate: 10 }), entry({ billable: false, rate: 10 })];

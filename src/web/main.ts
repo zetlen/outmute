@@ -1,8 +1,9 @@
 import { parseTimesheet } from "../adapters";
 import type { Timesheet } from "../core/timesheet";
 import { computeInvoice } from "../core/invoice";
+import { parseFeesCsv, type Fee } from "../core/fees";
 import { renderInvoicePdf } from "../core/pdf";
-import { fmtDay, fmtHours, money } from "../core/format";
+import { fmtDay, fmtFeeCount, fmtHours, money } from "../core/format";
 import { mergeConfig, type GroupBy } from "../core/types";
 import { VERSION } from "../core/version";
 
@@ -56,29 +57,117 @@ async function acceptFile(file: File): Promise<void> {
   }
 }
 
-dropzone.addEventListener("click", () => fileInput.click());
-dropzone.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" || e.key === " ") {
-    e.preventDefault();
-    fileInput.click();
+/** Open the file picker on click or Enter/Space, and accept a dropped file. */
+function wireDropzone(zone: HTMLElement, input: HTMLInputElement, accept: (file: File) => void) {
+  zone.addEventListener("click", () => input.click());
+  zone.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      input.click();
+    }
+  });
+  input.addEventListener("change", () => {
+    if (input.files?.[0]) accept(input.files[0]);
+    // Let the same file be chosen again, e.g. after editing it.
+    input.value = "";
+  });
+  for (const type of ["dragenter", "dragover"] as const) {
+    zone.addEventListener(type, (e) => {
+      e.preventDefault();
+      zone.classList.add("dragover");
+    });
   }
-});
-fileInput.addEventListener("change", () => {
-  if (fileInput.files?.[0]) void acceptFile(fileInput.files[0]);
-});
-for (const type of ["dragenter", "dragover"] as const) {
-  dropzone.addEventListener(type, (e) => {
+  zone.addEventListener("dragleave", () => zone.classList.remove("dragover"));
+  zone.addEventListener("drop", (e) => {
     e.preventDefault();
-    dropzone.classList.add("dragover");
+    zone.classList.remove("dragover");
+    const file = e.dataTransfer?.files?.[0];
+    if (file) accept(file);
   });
 }
-dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragover"));
-dropzone.addEventListener("drop", (e) => {
-  e.preventDefault();
-  dropzone.classList.remove("dragover");
-  const file = e.dataTransfer?.files?.[0];
-  if (file) void acceptFile(file);
-});
+
+wireDropzone(dropzone, fileInput, (file) => void acceptFile(file));
+
+// ---- Flat fees ----
+// Fees belong to one invoice, so unlike the form fields they aren't saved.
+const feeList = $<HTMLDivElement>("fees");
+
+function feeInput(className: string, label: string, type: string, value = ""): HTMLInputElement {
+  const input = document.createElement("input");
+  input.type = type;
+  input.className = className;
+  input.value = value;
+  input.setAttribute("aria-label", label);
+  if (type === "text") input.placeholder = label.replace(" (optional)", "");
+  if (type === "number") {
+    input.step = "any";
+    input.placeholder = "Amount";
+  }
+  return input;
+}
+
+function addFeeRow(fee: Partial<Fee> = {}): HTMLInputElement {
+  const row = document.createElement("div");
+  row.className = "fee";
+  const description = feeInput("fee-description", "Description", "text", fee.description);
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "secondary remove";
+  remove.textContent = "×";
+  remove.setAttribute("aria-label", "Remove fee");
+  remove.addEventListener("click", () => row.remove());
+  row.append(
+    description,
+    feeInput("fee-project", "Project (optional)", "text", fee.project),
+    feeInput("fee-date", "Date (optional)", "date", fee.day),
+    feeInput("fee-amount", "Amount", "number", fee.amount === undefined ? "" : String(fee.amount)),
+    remove,
+  );
+  feeList.append(row);
+  return description;
+}
+
+$<HTMLButtonElement>("add-fee").addEventListener("click", () => addFeeRow().focus());
+
+async function acceptFeesFile(file: File): Promise<void> {
+  clearStatus();
+  try {
+    const fees = parseFeesCsv(await file.text());
+    for (const fee of fees) addFeeRow(fee);
+    showStatus("ok", `Added ${fees.length} fee${fees.length === 1 ? "" : "s"} from ${file.name}.`);
+  } catch (err) {
+    showStatus("err", `${file.name}: ${(err as Error).message}`);
+  }
+}
+
+wireDropzone(
+  $<HTMLDivElement>("fees-dropzone"),
+  $<HTMLInputElement>("fees-file"),
+  (file) => void acceptFeesFile(file),
+);
+
+/** Read the fee rows, skipping blank ones; throws on a half-filled row. */
+function collectFees(): Fee[] {
+  const fees: Fee[] = [];
+  [...feeList.querySelectorAll<HTMLDivElement>(".fee")].forEach((row, i) => {
+    const field = (cls: string) => row.querySelector<HTMLInputElement>(`.${cls}`)!.value.trim();
+    const description = field("fee-description"),
+      project = field("fee-project"),
+      day = field("fee-date"),
+      amount = field("fee-amount");
+    if (!description && !project && !day && !amount) return;
+    if (!description || !amount || !Number.isFinite(Number(amount))) {
+      throw new Error(`fee ${i + 1} needs a description and an amount`);
+    }
+    fees.push({
+      description,
+      amount: Number(amount),
+      ...(day ? { day } : {}),
+      ...(project ? { project } : {}),
+    });
+  });
+  return fees;
+}
 
 // ---- Form persistence ----
 const FIELD_IDS = [
@@ -175,6 +264,7 @@ form.addEventListener("submit", async (e) => {
       includeNonBillable: $<HTMLInputElement>("all").checked,
       appendix: $<HTMLInputElement>("appendix").checked,
       number: val("number") || undefined,
+      fees: collectFees(),
     });
     const pdf = await renderInvoicePdf(invoice);
     const filename = `${invoice.number.replace(/[^A-Za-z0-9._-]/g, "_")}.pdf`;
@@ -187,7 +277,8 @@ form.addEventListener("submit", async (e) => {
 
     let message =
       `Downloaded ${filename}: ${invoice.lines.length} line item(s), ` +
-      `${fmtHours(invoice.totalHours)} hours, ${money(invoice.currency, invoice.total)} ` +
+      `${fmtHours(invoice.totalHours)} hours, ${fmtFeeCount(invoice.fees.length)}` +
+      `${money(invoice.currency, invoice.total)} ` +
       `due ${fmtDay(invoice.due)}.`;
     if (invoice.warnings.length) message += "\n⚠ " + invoice.warnings.join("\n⚠ ");
     showStatus("ok", message);

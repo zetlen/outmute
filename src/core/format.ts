@@ -49,6 +49,11 @@ export function fmtHours(hours: number): string {
   return hours.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+/** "2 fees, " for a run summary; empty when there are none. */
+export function fmtFeeCount(count: number): string {
+  return count ? `${count} fee${count === 1 ? "" : "s"}, ` : "";
+}
+
 /** Lenient numeric parse: strips currency symbols, handles "1.234,56" and "1,234.56". */
 export function parseNumber(raw: string | undefined | null): number {
   let s = (raw ?? "").replace(/[^\d.,-]/g, "").trim();

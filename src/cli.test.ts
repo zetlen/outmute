@@ -17,6 +17,8 @@ const CLI = resolve(REPO, "src/cli.ts");
 const SAMPLE = resolve(REPO, "test/fixtures/clockify-sample.csv");
 const RATED = resolve(REPO, "test/fixtures/clockify-rated.csv");
 const MALFORMED = resolve(REPO, "test/fixtures/malformed.csv");
+/** $50 + $25.50 in two fees. */
+const FEES = resolve(REPO, "test/fixtures/fees.csv");
 
 /** The sample fixture bills 12.5 h across 3 descriptions, plus a 0.5 h
  * non-billable entry, and its last entry is on 2026-07-10 (hence the default
@@ -191,6 +193,48 @@ describe("cli happy path", () => {
     const expected = join(home, `INV-${LAST_DAY}.pdf`);
     expect(existsSync(expected)).toBe(true);
     expect((await inspectPdf(expected)).title).toBe(`Invoice INV-${LAST_DAY}`);
+  }, 30_000);
+});
+
+describe("cli flat fees", () => {
+  const base = ["--no-input", "--from-name", "Jane Dev", "--to-name", "Acme Corp", "--rate", "150"];
+
+  test("--fees and --fee add to the total, file fees first", async () => {
+    const out = join(home, "fees.pdf");
+    const result = runCli(SAMPLE, ...base, "-o", out, "--fees", FEES, "--fee", "Bonus=$100");
+
+    expect(result.code).toBe(0);
+    await inspectPdf(out);
+    // 1875 of time + 50 + 25.50 + 100 of fees; hours are unchanged.
+    expect(result.stdout).toContain("3 line item(s)");
+    expect(result.stdout).toContain(`${BILLABLE_HOURS} hours`);
+    expect(result.stdout).toContain("3 fees");
+    expect(result.stdout).toContain("$2,050.50");
+  }, 30_000);
+
+  test("rejects a malformed --fee", () => {
+    const out = join(home, "nope.pdf");
+    const result = runCli(SAMPLE, ...base, "-o", out, "--fee", "Bonus");
+
+    expect(result.code).not.toBe(0);
+    expect(result.stderr).toContain('should look like "Description=amount"');
+    expect(existsSync(out)).toBe(false);
+  }, 30_000);
+
+  test("names the fees file when it can't be read", () => {
+    const out = join(home, "nope.pdf");
+    const result = runCli(SAMPLE, ...base, "-o", out, "--fees", MALFORMED);
+
+    expect(result.code).not.toBe(0);
+    expect(result.stderr).toContain(`${MALFORMED}: a fees CSV needs`);
+    expect(existsSync(out)).toBe(false);
+  }, 30_000);
+
+  test("fails on a missing fees file", () => {
+    const result = runCli(SAMPLE, ...base, "-o", join(home, "nope.pdf"), "--fees", "nope.csv");
+
+    expect(result.code).not.toBe(0);
+    expect(result.stderr).toContain("no such fees file: nope.csv");
   }, 30_000);
 });
 

@@ -42,6 +42,11 @@ Useful optional flags (full list: `--help`):
 - `--subtotals` subtotal row per project; `--no-items` one summary row per
   project instead of its itemized entries (per-project rates and display
   settings go in the config file's `[projects."Name"]` tables)
+- `--fees <fees.csv>` flat fees from a CSV (`Description` and `Amount`
+  columns, optional `Date` and `Project`), and `--fee "Description=amount"`
+  (repeatable) for one-offs. Use these for anything billed as a fixed amount
+  (awards, bonuses, reimbursements) rather than a fake project with a rate;
+  ask for the fees file path rather than searching for one
 - `--all` include non-billable entries; `--appendix` per-entry detail page
 - `--accent "#rrggbb"` accent color, `--paper letter|a4`
 - `--font-heading <v>` / `--font-body <v>` typeface per slot (heading = title,
