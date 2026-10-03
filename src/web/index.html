@@ -94,6 +94,7 @@
       }
       input[type="text"],
       input[type="number"],
+      input[type="date"],
       textarea,
       select {
         font: inherit;
@@ -126,7 +127,7 @@
       .span2 {
         grid-column: 1 / -1;
       }
-      #dropzone {
+      .dropzone {
         border: 2px dashed #c6cbd4;
         border-radius: 10px;
         background: var(--card);
@@ -138,21 +139,97 @@
           border-color 0.15s,
           background 0.15s;
       }
-      #dropzone.dragover {
+      .dropzone.dragover {
         border-color: var(--accent);
         background: #eef3fb;
       }
-      #dropzone.loaded {
+      .dropzone.loaded {
         border-style: solid;
         border-color: #7ea56f;
         color: var(--ink);
       }
-      #dropzone strong {
+      .dropzone strong {
         color: var(--accent);
       }
-      #dropzone .hint {
+      .dropzone .hint {
         font-size: 0.8rem;
         margin-top: 0.4rem;
+      }
+      #fees-dropzone {
+        padding: 1rem;
+        font-size: 0.88rem;
+      }
+      .fees-help {
+        clear: both;
+        color: var(--muted);
+        font-size: 0.84rem;
+        margin-bottom: 0.9rem;
+      }
+      #fees {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+        margin-bottom: 0.9rem;
+      }
+      #fees:empty {
+        display: none;
+      }
+      .fee {
+        display: grid;
+        grid-template-columns: minmax(8rem, 2fr) minmax(7rem, 1.2fr) 10.5rem 7rem auto;
+        grid-template-areas: "description project date amount remove";
+        gap: 0.5rem;
+        align-items: center;
+      }
+      .fee-description {
+        grid-area: description;
+      }
+      .fee-project {
+        grid-area: project;
+      }
+      .fee-date {
+        grid-area: date;
+      }
+      .fee-amount {
+        grid-area: amount;
+      }
+      .fee .remove {
+        grid-area: remove;
+        color: var(--muted);
+        padding: 0.45rem 0.65rem;
+      }
+      .fees-actions {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.9rem;
+        align-items: start;
+      }
+      @media (max-width: 40rem) {
+        .fee {
+          grid-template-columns: 1fr 1fr auto;
+          grid-template-areas:
+            "description description remove"
+            "project project project"
+            "date amount amount";
+          padding-bottom: 0.6rem;
+          border-bottom: 1px solid var(--rule);
+        }
+        .fees-actions {
+          grid-template-columns: 1fr;
+        }
+      }
+      .secondary {
+        font: inherit;
+        font-size: 0.88rem;
+        color: var(--accent);
+        background: #fff;
+        border: 1px solid var(--rule);
+        border-radius: 6px;
+        padding: 0.45rem 0.8rem;
+        cursor: pointer;
+      }
+      .secondary:hover {
+        border-color: var(--accent);
       }
       #generate {
         font: inherit;
@@ -230,6 +307,7 @@
       <form id="form">
         <div
           id="dropzone"
+          class="dropzone"
           tabindex="0"
           role="button"
           aria-label="Choose or drop the Clockify CSV export"
@@ -350,6 +428,29 @@
               <textarea id="notes">
 Thank you for your business. Please remit payment within {net_days} days.</textarea>
             </label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Flat fees</legend>
+          <p class="fees-help">
+            Charges billed as a fixed amount rather than hours, such as awards or reimbursements.
+            They appear in their own block after the time rows. Fees aren't saved between visits.
+          </p>
+          <div id="fees"></div>
+          <div class="fees-actions">
+            <button type="button" id="add-fee" class="secondary">Add fee</button>
+            <div
+              id="fees-dropzone"
+              class="dropzone"
+              tabindex="0"
+              role="button"
+              aria-label="Choose or drop a fees CSV"
+            >
+              <div id="fees-dropzone-text">Drop a fees CSV here, or <strong>browse</strong></div>
+              <div class="hint">Columns: Description, Amount, and optionally Date and Project.</div>
+              <input type="file" id="fees-file" accept=".csv,text/csv" hidden />
+            </div>
           </div>
         </fieldset>
 

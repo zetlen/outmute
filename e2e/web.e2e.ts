@@ -14,6 +14,7 @@ const fixture = (name: string) =>
   fileURLToPath(new URL(`../test/fixtures/${name}`, import.meta.url));
 const SAMPLE = fixture("clockify-sample.csv");
 const MALFORMED = fixture("malformed.csv");
+const FEES = fixture("fees.csv");
 
 /** Matches the CLI fixture: 6 parsed entries, 12.5 h billable, last day 2026-07-10. */
 const SAMPLE_ENTRIES = 6;
@@ -129,6 +130,50 @@ test("the project display checkboxes reach the invoice", async ({ page }) => {
   await page.reload();
   await expect(page.locator("#items")).not.toBeChecked();
   await expect(page.locator("#subtotals")).toBeChecked();
+});
+
+test("bills flat fees from the editor and a fees CSV", async ({ page }) => {
+  await page.setInputFiles("#file", SAMPLE);
+  await fillInvoiceForm(page);
+
+  await page.setInputFiles("#fees-file", FEES);
+  await expect(page.locator("#status")).toContainText("Added 2 fees from fees.csv");
+  await expect(page.locator("#fees .fee")).toHaveCount(2);
+  await expect(page.locator("#fees .fee-date").first()).toHaveValue("2026-07-08");
+
+  await page.click("#add-fee");
+  await expect(page.locator("#fees .fee-description").last()).toBeFocused();
+  await page.keyboard.type("Bonus");
+  await page.locator("#fees .fee-amount").last().fill("100");
+  // A blank row is ignored rather than rejected.
+  await page.click("#add-fee");
+
+  const downloadPromise = page.waitForEvent("download");
+  await page.click("#generate");
+  const bytes = readFileSync(await (await downloadPromise).path());
+  expect(bytes.subarray(0, 5).toString("latin1")).toBe("%PDF-");
+
+  // 1875 of time + 50 + 25.50 + 100 of fees.
+  const status = page.locator("#status");
+  await expect(status).toHaveClass("ok");
+  await expect(status).toContainText("12.50 hours, 3 fees");
+  await expect(status).toContainText("$2,050.50");
+
+  // Removing a fee takes it off the next invoice.
+  await page.locator("#fees .remove").first().click();
+  await page.click("#generate");
+  await expect(status).toContainText("$2,000.50");
+});
+
+test("rejects a half-filled fee row", async ({ page }) => {
+  await page.setInputFiles("#file", SAMPLE);
+  await fillInvoiceForm(page);
+  await page.click("#add-fee");
+  await page.keyboard.type("Bonus");
+
+  await page.click("#generate");
+  await expect(page.locator("#status")).toHaveClass("err");
+  await expect(page.locator("#status")).toContainText("fee 1 needs a description and an amount");
 });
 
 test("reports an unrecognized CSV and leaves Generate disabled", async ({ page }) => {

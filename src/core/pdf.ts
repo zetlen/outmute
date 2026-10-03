@@ -230,7 +230,7 @@ export async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
   mainHeader();
 
   const descWidth = cols.desc.w - 8;
-  const measureRow = (line: Line) => {
+  const measureRow = (line: Pick<Line, "primary" | "secondary">) => {
     const primaryLines = wrap(line.primary, regular, 9.5, descWidth);
     const secondaryLines = line.secondary ? wrap(line.secondary, regular, 8.5, descWidth) : [];
     return {
@@ -239,8 +239,23 @@ export async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
       height: primaryLines.length * 12 + secondaryLines.length * 11 + 10,
     };
   };
-  const drawRow = (line: Line, face: Face) => {
-    const { primaryLines, secondaryLines, height } = measureRow(line);
+  /** A fee row fills only the amount column; a time row fills all three. */
+  interface Row {
+    primary: string;
+    secondary: string;
+    hours?: string;
+    rate?: string;
+    amount: string;
+  }
+  const timeRow = (line: Line): Row => ({
+    primary: line.primary,
+    secondary: line.secondary,
+    hours: fmtHours(line.hours),
+    rate: money(sym, line.rate),
+    amount: money(sym, line.hours * line.rate),
+  });
+  const drawRow = (row: Row, face: Face) => {
+    const { primaryLines, secondaryLines, height } = measureRow(row);
     if (p.ensure(height)) mainHeader();
     const rowTop = p.y;
     for (const text of primaryLines) {
@@ -253,9 +268,9 @@ export async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
     }
     const rowBottom = p.y;
     p.y = rowTop;
-    p.textRight(fmtHours(line.hours), cols.hours.right, body);
-    p.textRight(money(sym, line.rate), cols.rate.right, body);
-    p.textRight(money(sym, line.hours * line.rate), cols.amount.right, body);
+    if (row.hours) p.textRight(row.hours, cols.hours.right, body);
+    if (row.rate) p.textRight(row.rate, cols.rate.right, body);
+    p.textRight(row.amount, cols.amount.right, body);
     p.y = rowBottom - 4;
     p.hline(MARGIN, p.right, 0.6, RULE, 4);
     p.y -= 6;
@@ -271,7 +286,7 @@ export async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
       p.text(section.title, cols.desc.x, { face: bold, size: 9.5, color: INK });
       p.y -= 14;
     }
-    for (const line of section.lines) drawRow(line, section.summarized ? bold : regular);
+    for (const line of section.lines) drawRow(timeRow(line), section.summarized ? bold : regular);
     if (section.subtotal) {
       if (p.ensure(22)) mainHeader();
       const subtotalStyle: Style = { face: bold, size: 9, color: INK };
@@ -284,6 +299,20 @@ export async function renderInvoicePdf(inv: Invoice): Promise<Uint8Array> {
     } else if (heading) {
       p.y -= 4;
     }
+  }
+
+  // ---- Fees: amount only, under their own heading ----
+  if (inv.fees.length) {
+    const rows = inv.fees.map((fee): Row => ({
+      primary: fee.description,
+      secondary: [fee.project ?? "", fee.day ? fmtDay(fee.day) : ""].filter(Boolean).join(" · "),
+      amount: money(sym, fee.amount),
+    }));
+    if (p.ensure(17 + measureRow(rows[0]!).height)) mainHeader();
+    p.y -= 3;
+    p.text("Fees", cols.desc.x, { face: bold, size: 9.5, color: INK });
+    p.y -= 14;
+    for (const row of rows) drawRow(row, regular);
   }
 
   // ---- Totals ----

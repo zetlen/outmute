@@ -1,4 +1,5 @@
 import { parseFontSlotsConfig, type FontSlots } from "./fonts";
+import type { Fee } from "./fees";
 import type { TimeEntry } from "./timesheet";
 
 /** One invoice line item (a group of entries billed at the same rate). */
@@ -94,22 +95,28 @@ export interface InvoiceOptions {
   number?: string;
   /** Issue date as ISO "YYYY-MM-DD"; defaults to today. */
   issueDate?: string;
+  /** Flat fees billed alongside the time, in the order given. */
+  fees?: Fee[];
 }
 
 /** Everything the renderer needs to draw the invoice. */
 export interface Invoice {
   config: InvoiceConfig;
-  /** Every row drawn in the line item table, in order. */
+  /** Every time row drawn in the line item table, in order. */
   lines: Line[];
   /** The same rows, blocked by project. */
   sections: Section[];
   /** The billed entries, for the appendix. */
   entries: TimeEntry[];
+  /** Flat fees, drawn in their own block after the time rows. */
+  fees: Fee[];
+  feesTotal: number;
   number: string;
   issued: string;
   due: string;
   periodStart: string;
   periodEnd: string;
+  /** Time plus fees, before tax. */
   subtotal: number;
   taxPercent: number;
   tax: number;

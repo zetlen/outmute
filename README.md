@@ -83,7 +83,9 @@ outmute serve --port 8080
 
 Fill in the form, drop the CSV on the dropzone, click **Generate PDF**. The
 file is parsed and the PDF is produced entirely client-side; nothing is
-uploaded. Form values persist in localStorage for repeat invoices.
+uploaded. Form values persist in localStorage for repeat invoices. Flat fees
+go in the "Flat fees" section, typed in or imported from a fees CSV (see
+[Flat fees](#flat-fees)); they belong to one invoice, so they aren't saved.
 
 The same page is a static build you can host anywhere — see
 [Developer](#developer).
@@ -112,7 +114,8 @@ outmute report.csv --no-input \
 `--no-input` guarantees no prompts (it's also implied when stdin isn't a
 terminal, e.g. in CI). Run `outmute --help` for all flags: grouping
 (`-g description|project|day|entry`), per-project subtotals and summary rows
-(`--subtotals`, `--no-items`), non-billable entries (`--all`), per-entry
+(`--subtotals`, `--no-items`), flat fees (`--fees`, `--fee`), non-billable
+entries (`--all`), per-entry
 appendix page (`--appendix`), input format (`--input-format`), currency, net
 days, rounding, accent color (`--accent "#7a2048"`), typefaces (`--font`,
 `--font-heading`, `--font-body`), paper size, and more.
@@ -136,8 +139,8 @@ listed, and a named entry only needs the keys it changes. The CSV's
 [projects.default]
 rate = 130
 
-[projects."Awards"]
-rate = 50
+[projects."Retainer Client"]
+rate = 90
 ```
 
 Keys outmute doesn't recognize are reported as warnings rather than
@@ -172,6 +175,37 @@ items = false
 
 Whenever any project deviates from `items = true, subtotal = false`, the
 whole invoice is sectioned by project in order of first activity.
+
+## Flat fees
+
+Some charges are a fixed amount rather than hours at a rate: an award, a
+bonus, a reimbursement. Bill those as flat fees instead of inventing a
+project whose rate is the amount. They appear in a **Fees** block after the
+time rows, with the amount filled in and the hours and rate columns left
+blank, and they count toward the subtotal (and so toward tax). They don't
+change the invoice's hours or its billing period.
+
+Fees come from a CSV kept alongside the time report, from `--fee` on the
+command line, or both:
+
+```sh
+outmute report.csv --fees fees.csv --fee "Award=50" --fee "Parking=$18.50"
+```
+
+The fees CSV needs a header row with `Description` and `Amount` columns.
+`Date` and `Project` columns are optional, and when filled in they show
+under the fee's description. Amounts may carry a currency symbol and
+thousands separators; dates take the same formats as a Clockify export.
+
+```csv
+Date,Project,Description,Amount
+2026-08-15,Forge,Quarterly award,50.00
+,,Conference reimbursement,"1,200.00"
+```
+
+Fees are listed in the order given: the file's rows first, then each
+`--fee`. `--fee` splits on the last `=`, so a description may itself
+contain one.
 
 ## Fonts
 

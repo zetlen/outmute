@@ -182,7 +182,9 @@ export function computeInvoice(
   const sections = buildSections(priced, config, options.group);
   const lines = sections.flatMap((section) => section.lines);
 
-  const subtotal = sections.reduce((sum, section) => sum + section.amount, 0);
+  const fees = options.fees ?? [];
+  const feesTotal = fees.reduce((sum, fee) => sum + fee.amount, 0);
+  const subtotal = sections.reduce((sum, section) => sum + section.amount, 0) + feesTotal;
   const taxPercent = config.invoice.taxPercent;
   const tax = (subtotal * taxPercent) / 100;
   const days = priced.map((e) => e.day).sort();
@@ -196,6 +198,8 @@ export function computeInvoice(
     lines,
     sections,
     entries: priced.slice().sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0)),
+    fees,
+    feesTotal,
     number,
     issued,
     due: addDays(issued, Math.floor(config.invoice.netDays)),

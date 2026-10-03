@@ -15,8 +15,9 @@ import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
 import { AdapterError, adapterNames, parseTimesheet } from "./adapters";
 import type { Timesheet } from "./core/timesheet";
 import { computeInvoice, InvoiceError } from "./core/invoice";
+import { FeeError, parseFeeFlag, parseFeesCsv, type Fee } from "./core/fees";
 import { renderInvoicePdf } from "./core/pdf";
-import { fmtDay, fmtHours, money, symbolForCurrency } from "./core/format";
+import { fmtDay, fmtFeeCount, fmtHours, money, symbolForCurrency } from "./core/format";
 import { DEFAULT_CONFIG, mergeConfig, type GroupBy, type InvoiceConfig } from "./core/types";
 import { anchorFontPaths, FontError, resolveFontSlots } from "./core/fonts";
 import { VERSION } from "./core/version";
@@ -53,6 +54,9 @@ Options:
   -n, --number <id>         invoice number (default: prefix + last entry date)
   -g, --group <mode>        line item grouping: description|project|day|entry (default: description)
       --input-format <name> time report format (default: auto-detect; formats: ${adapterNames.join("|")})
+      --fees <path>         flat fees CSV: Description and Amount columns, optional
+                             Date and Project; billed in a Fees block after the time
+      --fee <desc=amount>   add one flat fee, e.g. --fee "Award=50" (repeatable)
       --all                 include entries marked non-billable
       --appendix            append a per-entry detail table on its own page
       --no-input            never prompt; fail if required info is missing
@@ -185,6 +189,8 @@ interface Answers {
   installSkill: boolean;
   csvPath?: string;
   inputFormat?: string;
+  feesPath?: string;
+  feeFlags: string[];
   output?: string;
   number?: string;
   group: GroupBy;
@@ -218,6 +224,8 @@ function parseCliArgs(): { answers: Answers; overrides: Overrides } {
         "save-config": { type: "boolean" },
         "install-skill": { type: "boolean" },
         "input-format": { type: "string" },
+        fees: { type: "string" },
+        fee: { type: "string", multiple: true },
         port: { type: "string" },
         font: { type: "string" },
         "font-heading": { type: "string" },
@@ -304,6 +312,8 @@ function parseCliArgs(): { answers: Answers; overrides: Overrides } {
       installSkill: Boolean(values["install-skill"]),
       csvPath: positionals[0] === "serve" ? undefined : positionals[0],
       inputFormat: values["input-format"],
+      feesPath: values.fees,
+      feeFlags: values.fee ?? [],
       output: values.output,
       number: values.number,
       group,
@@ -543,6 +553,26 @@ function loadCsv(path: string, format: string | undefined): Timesheet {
   }
 }
 
+/** The fees file first, in its own order, then each --fee in the order given. */
+function loadFees(path: string | undefined, flags: string[]): Fee[] {
+  const fees: Fee[] = [];
+  if (path) {
+    if (!existsSync(path)) die(`no such fees file: ${path}`);
+    try {
+      fees.push(...parseFeesCsv(readFileSync(path, "utf8")));
+    } catch (err) {
+      die(`${path}: ${(err as Error).message}`);
+    }
+  }
+  try {
+    fees.push(...flags.map(parseFeeFlag));
+  } catch (err) {
+    if (err instanceof FeeError) die(err.message);
+    throw err;
+  }
+  return fees;
+}
+
 async function main(): Promise<void> {
   const { answers, overrides } = parseCliArgs();
   if (answers.installSkill) {
@@ -559,6 +589,7 @@ async function main(): Promise<void> {
     answers.interactive,
   );
   applyOverrides(config, overrides);
+  const fees = loadFees(answers.feesPath, answers.feeFlags);
 
   let report: Timesheet;
   let rl: Prompter | undefined;
@@ -628,6 +659,7 @@ async function main(): Promise<void> {
       includeNonBillable: answers.all,
       appendix: answers.appendix,
       number: answers.number,
+      fees,
     });
   } catch (err) {
     if (err instanceof InvoiceError)
@@ -677,6 +709,7 @@ async function main(): Promise<void> {
   writeFileSync(outputPath, pdf);
   console.log(
     `${outputPath}: ${invoice.lines.length} line item(s), ${fmtHours(invoice.totalHours)} hours, ` +
+      fmtFeeCount(invoice.fees.length) +
       `${money(invoice.currency, invoice.total)} due ${fmtDay(invoice.due)}`,
   );
 }
