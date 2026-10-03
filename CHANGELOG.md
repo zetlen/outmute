@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.1.0](https://github.com/zetlen/outmute/compare/v3.0.0...v3.1.0) (2026-10-03)
+
+
+### Features
+
+* bill flat fees alongside tracked time ([#35](https://github.com/zetlen/outmute/issues/35)) ([4fc364f](https://github.com/zetlen/outmute/commit/4fc364f4b3eecab195b6cb2a47cbaa7880d43668))
+
 ## [3.0.0](https://github.com/zetlen/outmute/compare/v2.2.0...v3.0.0) (2026-09-02)
 
 
