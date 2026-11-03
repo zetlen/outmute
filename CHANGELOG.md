@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.2.0](https://github.com/zetlen/outmute/compare/v3.1.0...v3.2.0) (2026-11-03)
+
+
+### Features
+
+* label project subtotals from a {client}/{project} template ([#37](https://github.com/zetlen/outmute/issues/37)) ([0f13dcd](https://github.com/zetlen/outmute/commit/0f13dcd0f0ee806e7db86fba2080d86997cadd19))
+
 ## [3.1.0](https://github.com/zetlen/outmute/compare/v3.0.0...v3.1.0) (2026-10-03)
 
 
