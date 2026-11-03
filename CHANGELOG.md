@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.4.1](https://github.com/zetlen/outmute/compare/v3.4.0...v3.4.1) (2026-11-03)
+
+
+### Bug Fixes
+
+* **clockify:** prefer exact Duration (h) over rounded Duration (decimal) ([#43](https://github.com/zetlen/outmute/issues/43)) ([fc6d18f](https://github.com/zetlen/outmute/commit/fc6d18fe9f8533d514cc1f9148da34cd27cc913c))
+
 ## [3.4.0](https://github.com/zetlen/outmute/compare/v3.3.0...v3.4.0) (2026-11-03)
 
 
