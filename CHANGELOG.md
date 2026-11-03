@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.4.0](https://github.com/zetlen/outmute/compare/v3.3.0...v3.4.0) (2026-11-03)
+
+
+### Features
+
+* **web:** add a project label field to the invoice form ([#41](https://github.com/zetlen/outmute/issues/41)) ([f68cba5](https://github.com/zetlen/outmute/commit/f68cba5565dfc4fd688e3720b575f7755f60db5e))
+
 ## [3.3.0](https://github.com/zetlen/outmute/compare/v3.2.0...v3.3.0) (2026-11-03)
 
 
