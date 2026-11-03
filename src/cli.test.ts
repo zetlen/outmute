@@ -487,6 +487,23 @@ describe("cli project display settings", () => {
     ) as any;
     expect(saved.projects.default).toEqual({ rate: 1, items: true, subtotal: true });
   }, 30_000);
+
+  test("--save-config keeps the subtotal label template", () => {
+    const result = runCli(
+      SAMPLE,
+      "--no-input",
+      "--rate",
+      "1",
+      "--subtotal-label-template",
+      "{client} / {project}",
+      "--save-config",
+    );
+    expect(result.code).toBe(0);
+    const saved = parseToml(
+      readFileSync(join(home, ".config", "outmute", "config.toml"), "utf8"),
+    ) as any;
+    expect(saved.invoice.subtotalLabelTemplate).toBe("{client} / {project}");
+  }, 30_000);
 });
 
 describe("cli config format fallback", () => {

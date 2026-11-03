@@ -68,6 +68,11 @@ export interface InvoiceConfig {
     roundUpMinutes: number;
     /** May contain a {net_days} placeholder. */
     notes: string;
+    /**
+     * Label for a project's heading, summary rows and subtotal row. May
+     * contain {project} and {client} placeholders.
+     */
+    subtotalLabelTemplate: string;
     /** Accent color, #rrggbb. */
     accent: string;
     paper: "letter" | "a4";
@@ -142,6 +147,7 @@ const KNOWN_KEYS = {
     "taxLabel",
     "roundUpMinutes",
     "notes",
+    "subtotalLabelTemplate",
     "accent",
     "paper",
     "fonts",
@@ -160,6 +166,7 @@ export const DEFAULT_CONFIG: InvoiceConfig = {
     taxLabel: "Tax",
     roundUpMinutes: 0,
     notes: "Thank you for your business. Please remit payment within {net_days} days.",
+    subtotalLabelTemplate: "{project}",
     accent: "#20509e",
     paper: "letter",
     fonts: { heading: "sans", body: "sans" },
@@ -223,6 +230,7 @@ export function mergeConfig(
       taxLabel: str(i.taxLabel, d.taxLabel),
       roundUpMinutes: num(i.roundUpMinutes, d.roundUpMinutes),
       notes: str(i.notes, d.notes),
+      subtotalLabelTemplate: str(i.subtotalLabelTemplate, d.subtotalLabelTemplate),
       accent: /^#[0-9a-fA-F]{6}$/.test(i.accent ?? "") ? i.accent : d.accent,
       paper: i.paper === "a4" ? "a4" : "letter",
       fonts: parseFontSlotsConfig(i.fonts, d.fonts),

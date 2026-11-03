@@ -40,14 +40,20 @@ function resolveRates(
 /**
  * How line text is composed. "sectioned" rows sit under a project heading, so
  * the project name is left out of them; "summary" rows stand in for a whole
- * project and carry only its name.
+ * project and carry only its label.
  */
 type LineStyle = "plain" | "sectioned" | "summary";
+
+/** Fill a subtotal label template's {project} and {client} placeholders. */
+function projectLabel(template: string, project: string, client: string): string {
+  return template.replaceAll("{project}", project || "(no project)").replaceAll("{client}", client);
+}
 
 function buildLines(
   entries: PricedEntry[],
   groupBy: InvoiceOptions["group"],
   style: LineStyle = "plain",
+  label = "",
 ): Line[] {
   if (style === "summary") groupBy = "project";
   const groups = new Map<string, PricedEntry[]>();
@@ -71,7 +77,7 @@ function buildLines(
     const descriptions = [...new Set(bucket.map((e) => e.description).filter(Boolean))];
     let primary: string, secondary: string;
     if (style === "summary") {
-      primary = first.project || "(no project)";
+      primary = label;
       secondary = "";
     } else if (groupBy === "description") {
       primary = first.description || "(no description)";
@@ -145,10 +151,14 @@ function buildSections(
   const sections: Section[] = [];
   for (const [project, bucket] of byProject) {
     const display = displays.get(project)!;
-    const lines = buildLines(bucket, groupBy, display.items ? "sectioned" : "summary");
+    // ponytail: same-named projects of two clients share one bucket and the first
+    // client; key buckets by client too if that turns up.
+    const client = bucket.find((e) => e.client)?.client ?? "";
+    const label = projectLabel(config.invoice.subtotalLabelTemplate, project, client);
+    const lines = buildLines(bucket, groupBy, display.items ? "sectioned" : "summary", label);
     // A collapsed project only needs a subtotal when it spans several rates.
     const subtotal = display.items ? display.subtotal : lines.length > 1;
-    sections.push(finish(project || "(no project)", lines, !display.items, subtotal));
+    sections.push(finish(label, lines, !display.items, subtotal));
   }
   sections.sort((a, b) => {
     const da = a.lines[0]!.firstDay,

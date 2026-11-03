@@ -56,6 +56,7 @@ function parse(text: string): Timesheet {
   if (!rows.length) throw new AdapterError("CSV has no time entries");
 
   const projectCol = findColumn(fields, "Project");
+  const clientCol = findColumn(fields, "Client");
   const descCol = findColumn(fields, "Description");
   const billableCol = findColumn(fields, "Billable");
   const rateCol = findColumn(fields, "Billable Rate");
@@ -72,6 +73,9 @@ function parse(text: string): Timesheet {
     return {
       day: tryParseDate((row[dateCol] ?? "").trim(), fmt)!,
       project: projectCol !== -1 ? (row[projectCol] ?? "").trim() : "",
+      ...(clientCol !== -1 && (row[clientCol] ?? "").trim()
+        ? { client: row[clientCol]!.trim() }
+        : {}),
       description: descCol !== -1 ? (row[descCol] ?? "").trim() : "",
       hours: parseDuration(row, decimalCol, hmsCol),
       // Clockify leaves the rate blank/0 when none is set; treat that as "unpriced".

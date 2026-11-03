@@ -176,6 +176,15 @@ items = false
 Whenever any project deviates from `items = true, subtotal = false`, the
 whole invoice is sectioned by project in order of first activity.
 
+The project's heading, summary rows, and subtotal row show its name by
+default. `--subtotal-label-template`, or `subtotalLabelTemplate` under
+`[invoice]`, replaces that label with a template in which `{project}` is the
+project name and `{client}` is the report's Client column:
+
+```sh
+outmute report.csv --no-items --subtotal-label-template "{client}: {project}"
+```
+
 ## Flat fees
 
 Some charges are a fixed amount rather than hours at a rate: an award, a
