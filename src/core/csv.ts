@@ -94,6 +94,11 @@ export function tryParseDate(raw: string, fmt: DateFormat): string | null {
   return toISO(y, m, d);
 }
 
+/** Parse a "YYYY-MM-DD" or "YYYY/MM/DD" day to ISO, or null if it isn't a real date. */
+export function parseIsoDay(raw: string): string | null {
+  return tryParseDate(raw.trim(), DATE_FORMATS[0]!) ?? tryParseDate(raw.trim(), DATE_FORMATS[4]!);
+}
+
 /** Find the first format that parses every date string, or null if none does. */
 export function pickDateFormat(rawDates: string[]): DateFormat | null {
   return (

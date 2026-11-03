@@ -15,6 +15,7 @@ import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
 import { AdapterError, adapterNames, parseTimesheet } from "./adapters";
 import type { Timesheet } from "./core/timesheet";
 import { computeInvoice, InvoiceError } from "./core/invoice";
+import { parseIsoDay } from "./core/csv";
 import { FeeError, parseFeeFlag, parseFeesCsv, type Fee } from "./core/fees";
 import { renderInvoicePdf } from "./core/pdf";
 import { fmtDay, fmtFeeCount, fmtHours, money, symbolForCurrency } from "./core/format";
@@ -54,6 +55,9 @@ Options:
   -n, --number <id>         invoice number (default: prefix + last entry date)
   -g, --group <mode>        line item grouping: description|project|day|entry (default: description)
       --input-format <name> time report format (default: auto-detect; formats: ${adapterNames.join("|")})
+      --period-start <date> only bill entries on or after this day (YYYY-MM-DD or
+      --period-end <date>    YYYY/MM/DD); either way the invoice's Period shows the
+                             dates given, even if no entry falls on them
       --fees <path>         flat fees CSV: Description and Amount columns, optional
                              Date and Project; billed in a Fees block after the time
       --fee <desc=amount>   add one flat fee, e.g. --fee "Award=50" (repeatable)
@@ -200,6 +204,8 @@ interface Answers {
   feeFlags: string[];
   output?: string;
   number?: string;
+  periodStart?: string;
+  periodEnd?: string;
   group: GroupBy;
   all: boolean;
   appendix: boolean;
@@ -231,6 +237,8 @@ function parseCliArgs(): { answers: Answers; overrides: Overrides } {
         "save-config": { type: "boolean" },
         "install-skill": { type: "boolean" },
         "input-format": { type: "string" },
+        "period-start": { type: "string" },
+        "period-end": { type: "string" },
         fees: { type: "string" },
         fee: { type: "string", multiple: true },
         port: { type: "string" },
@@ -304,6 +312,13 @@ function parseCliArgs(): { answers: Answers; overrides: Overrides } {
   if (values.accent && !/^#[0-9a-fA-F]{6}$/.test(values.accent)) {
     die(`invalid --accent ${JSON.stringify(values.accent)}; expected #rrggbb`);
   }
+  const periods: Record<string, string | undefined> = {};
+  for (const flag of ["period-start", "period-end"] as const) {
+    const raw = values[flag];
+    if (raw === undefined) continue;
+    periods[flag] =
+      parseIsoDay(raw) ?? die(`invalid --${flag} ${JSON.stringify(raw)}; expected YYYY-MM-DD`);
+  }
   if (values.port && !(Number.isInteger(Number(values.port)) && Number(values.port) > 0)) {
     die(`invalid --port ${JSON.stringify(values.port)}; expected a port number`);
   }
@@ -324,6 +339,8 @@ function parseCliArgs(): { answers: Answers; overrides: Overrides } {
       feeFlags: values.fee ?? [],
       output: values.output,
       number: values.number,
+      periodStart: periods["period-start"],
+      periodEnd: periods["period-end"],
       group,
       all: Boolean(values.all),
       appendix: Boolean(values.appendix),
@@ -671,6 +688,8 @@ async function main(): Promise<void> {
       includeNonBillable: answers.all,
       appendix: answers.appendix,
       number: answers.number,
+      periodStart: answers.periodStart,
+      periodEnd: answers.periodEnd,
       fees,
     });
   } catch (err) {

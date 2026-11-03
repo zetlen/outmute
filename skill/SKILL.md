@@ -37,6 +37,9 @@ Required knowledge before running — from the config file or by asking the user
 Useful optional flags (full list: `--help`):
 
 - `-n <number>` invoice number (default: prefix + last entry date)
+- `--period-start <date> --period-end <date>` (`YYYY-MM-DD` or `YYYY/MM/DD`,
+  inclusive; either may be given alone) bill only entries in that range and
+  print it as the invoice's Period even if no entry falls on the edge days
 - `-g description|project|day|entry` line-item grouping (default: description)
 - `--tax-percent <n>`, `--net-days <n>`, `--currency <symbol>`
 - `--subtotals` subtotal row per project; `--no-items` one summary row per

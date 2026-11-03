@@ -264,6 +264,8 @@ form.addEventListener("submit", async (e) => {
       includeNonBillable: $<HTMLInputElement>("all").checked,
       appendix: $<HTMLInputElement>("appendix").checked,
       number: val("number") || undefined,
+      periodStart: val("periodStart") || undefined,
+      periodEnd: val("periodEnd") || undefined,
       fees: collectFees(),
     });
     const pdf = await renderInvoicePdf(invoice);

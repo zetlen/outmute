@@ -177,6 +177,15 @@ export function computeInvoice(
   const warnings: string[] = [];
   let entries: TimeEntry[] = timesheet.entries;
 
+  const { periodStart: from, periodEnd: to } = options;
+  if (from && to && from > to) {
+    throw new InvoiceError(`the period starts (${from}) after it ends (${to})`);
+  }
+  if (from || to) {
+    entries = entries.filter((e) => (!from || e.day >= from) && (!to || e.day <= to));
+    if (!entries.length) throw new InvoiceError("no time entries fall within the period");
+  }
+
   if (!options.includeNonBillable) {
     const skipped = entries.filter((e) => !e.billable).length;
     entries = entries.filter((e) => e.billable);
@@ -198,8 +207,10 @@ export function computeInvoice(
   const taxPercent = config.invoice.taxPercent;
   const tax = (subtotal * taxPercent) / 100;
   const days = priced.map((e) => e.day).sort();
-  const periodStart = days[0],
-    periodEnd = days[days.length - 1];
+  // An explicit period wins over the span of the entries, so it can cover
+  // days with no entries.
+  const periodStart = from ?? days[0]!,
+    periodEnd = to ?? days[days.length - 1]!;
   const issued = options.issueDate ?? todayISO();
   const number = options.number || `${config.invoice.numberPrefix}${periodEnd.replaceAll("-", "")}`;
 

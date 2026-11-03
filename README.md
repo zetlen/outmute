@@ -185,6 +185,21 @@ project name and `{client}` is the report's Client column:
 outmute report.csv --no-items --subtotal-label-template "{client}: {project}"
 ```
 
+## Billing period
+
+By default the invoice's **Period** runs from the first to the last entry's
+day. To bill a fixed range instead, give it explicitly (inclusive,
+`YYYY-MM-DD` or `YYYY/MM/DD`; the web form has date pickers):
+
+```sh
+outmute report.csv --period-start 2026/10/01 --period-end 2026/10/31
+```
+
+Entries outside the range are left off, and the Period shows exactly the dates
+you gave, even if nothing was logged on the first or last day. Either flag
+works alone: the other end then comes from the entries. The default invoice
+number follows the period's last day.
+
 ## Flat fees
 
 Some charges are a fixed amount rather than hours at a rate: an award, a
