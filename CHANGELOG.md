@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.3.0](https://github.com/zetlen/outmute/compare/v3.2.0...v3.3.0) (2026-11-03)
+
+
+### Features
+
+* select entries by --period-start/--period-end and print that period ([#39](https://github.com/zetlen/outmute/issues/39)) ([5572bd0](https://github.com/zetlen/outmute/commit/5572bd0865185697687dce984e554158f26bae52))
+
 ## [3.2.0](https://github.com/zetlen/outmute/compare/v3.1.0...v3.2.0) (2026-11-03)
 
 
