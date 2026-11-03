@@ -187,6 +187,7 @@ const FIELD_IDS = [
   "paper",
   "fontHeading",
   "fontBody",
+  "subtotalLabelTemplate",
   "notes",
 ] as const;
 const CHECKBOX_IDS = ["all", "appendix", "items", "subtotals"] as const;
@@ -219,6 +220,14 @@ function restoreForm(): void {
 restoreForm();
 form.addEventListener("input", saveForm);
 
+/** The project label only appears on an invoice sectioned by project. */
+function syncSubtotalLabelField(): void {
+  $("subtotalLabelField").hidden =
+    $<HTMLInputElement>("items").checked && !$<HTMLInputElement>("subtotals").checked;
+}
+syncSubtotalLabelField();
+for (const id of ["items", "subtotals"]) $(id).addEventListener("change", syncSubtotalLabelField);
+
 // ---- Generate ----
 const splitLines = (raw: string) =>
   raw
@@ -243,6 +252,7 @@ form.addEventListener("submit", async (e) => {
       taxLabel: val("taxLabel") || "Tax",
       roundUpMinutes: val("roundUp"),
       notes: $<HTMLTextAreaElement>("notes").value,
+      subtotalLabelTemplate: val("subtotalLabelTemplate") || undefined,
       accent: val("accent"),
       paper: val("paper"),
       fonts: { heading: val("fontHeading"), body: val("fontBody") },

@@ -132,6 +132,23 @@ test("the project display checkboxes reach the invoice", async ({ page }) => {
   await expect(page.locator("#subtotals")).toBeChecked();
 });
 
+test("the project label field shows only when the invoice has project sections", async ({
+  page,
+}) => {
+  const field = page.getByLabel("Project label");
+  await expect(field).toBeHidden();
+  await page.uncheck("#items");
+  await expect(field).toBeVisible();
+  await page.check("#items");
+  await expect(field).toBeHidden();
+  await page.check("#subtotals");
+  await expect(field).toBeVisible();
+
+  // A reload restores the checkbox, and the field follows it.
+  await page.reload();
+  await expect(field).toBeVisible();
+});
+
 test("bills flat fees from the editor and a fees CSV", async ({ page }) => {
   await page.setInputFiles("#file", SAMPLE);
   await fillInvoiceForm(page);
