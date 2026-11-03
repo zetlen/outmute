@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseCsv } from "./csv";
+import { parseCsv, parseIsoDay } from "./csv";
 
 describe("parseCsv", () => {
   test("parses simple comma-separated rows", () => {
@@ -33,5 +33,14 @@ describe("parseCsv", () => {
       ["a", "b"],
       ["1", "2"],
     ]);
+  });
+});
+
+describe("parseIsoDay", () => {
+  test("reads dashes or slashes and rejects non-dates", () => {
+    expect(parseIsoDay("2026/10/01")).toBe("2026-10-01");
+    expect(parseIsoDay("2026-10-1")).toBe("2026-10-01");
+    expect(parseIsoDay("2026/02/30")).toBeNull();
+    expect(parseIsoDay("10/01/2026")).toBeNull();
   });
 });

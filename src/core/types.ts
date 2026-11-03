@@ -102,6 +102,13 @@ export interface InvoiceOptions {
   issueDate?: string;
   /** Flat fees billed alongside the time, in the order given. */
   fees?: Fee[];
+  /**
+   * Bill only entries on or after this ISO "YYYY-MM-DD" day, and print it as
+   * the invoice's period start even if no entry falls on it.
+   */
+  periodStart?: string;
+  /** Like periodStart, for the last day (inclusive). */
+  periodEnd?: string;
 }
 
 /** Everything the renderer needs to draw the invoice. */

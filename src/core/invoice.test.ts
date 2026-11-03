@@ -399,6 +399,54 @@ describe("computeInvoice period + invoice number", () => {
   });
 });
 
+describe("computeInvoice period override", () => {
+  const entries = [
+    entry({ day: "2026-09-30", rate: 10 }),
+    entry({ day: "2026-10-05", rate: 10 }),
+    entry({ day: "2026-10-31", rate: 10 }),
+    entry({ day: "2026-11-01", rate: 10 }),
+  ];
+
+  test("selects entries inclusively and shows the stated period, not the entries' span", () => {
+    const invoice = computeInvoice(
+      timesheet(entries),
+      mergeConfig({}),
+      options({ periodStart: "2026-10-01", periodEnd: "2026-10-31" }),
+    );
+    expect(invoice.totalHours).toBe(2);
+    expect(invoice.periodStart).toBe("2026-10-01");
+    expect(invoice.periodEnd).toBe("2026-10-31");
+  });
+
+  test("the default invoice number follows the period end, not the last billed entry", () => {
+    const invoice = computeInvoice(
+      timesheet(entries),
+      mergeConfig({}),
+      options({ periodStart: "2026-10-01", periodEnd: "2026-10-20" }),
+    );
+    expect(invoice.periodEnd).toBe("2026-10-20");
+    expect(invoice.number).toBe("INV-20261020");
+  });
+
+  test("one bound alone filters one side and derives the other from the entries", () => {
+    const invoice = computeInvoice(
+      timesheet(entries),
+      mergeConfig({}),
+      options({ periodStart: "2026-10-05" }),
+    );
+    expect(invoice.totalHours).toBe(3);
+    expect(invoice.periodStart).toBe("2026-10-05");
+    expect(invoice.periodEnd).toBe("2026-11-01");
+  });
+
+  test("rejects an empty or inverted period", () => {
+    const run = (o: Partial<InvoiceOptions>) =>
+      computeInvoice(timesheet(entries), mergeConfig({}), options(o));
+    expect(() => run({ periodStart: "2027-01-01" })).toThrow(InvoiceError);
+    expect(() => run({ periodStart: "2026-10-31", periodEnd: "2026-10-01" })).toThrow(InvoiceError);
+  });
+});
+
 describe("computeInvoice currency precedence", () => {
   test("config currency wins over everything", () => {
     const config = mergeConfig({ invoice: { currency: "£" } });
