@@ -8,6 +8,8 @@
 export interface TimeEntry {
   day: string;
   project: string;
+  /** The client the project belongs to, when the source records one. */
+  client?: string;
   description: string;
   hours: number;
   /** Hourly rate from the source; absent means "resolve from config rates". */

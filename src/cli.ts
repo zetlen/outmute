@@ -75,6 +75,10 @@ Config overrides (each replaces the corresponding config value):
       --no-items                collapse each project into a single summary row
                                 (--no-subtotals / --items turn either back off;
                                 per-project settings live in the config file)
+      --subtotal-label-template <text>
+                                project label on headings, summary and subtotal
+                                rows; {project} and {client} are filled in
+                                (default: "{project}")
 
 Typefaces (each value is sans|serif|mono — Inter, Source Serif 4, JetBrains
 Mono — or your own "regular.ttf" / "regular.ttf,bold.ttf", TTF or OTF only):
@@ -153,6 +157,9 @@ taxLabel = "${defaultInvoice.taxLabel}"
 roundUpMinutes = ${defaultInvoice.roundUpMinutes}
 # May contain a {net_days} placeholder.
 notes = "${defaultInvoice.notes}"
+# Project label on headings, summary and subtotal rows. {project} and
+# {client} (the Client column of the time report) are filled in.
+subtotalLabelTemplate = "${defaultInvoice.subtotalLabelTemplate}"
 # Accent color, #rrggbb.
 accent = "${defaultInvoice.accent}"
 paper = "${defaultInvoice.paper}" # letter | a4
@@ -247,6 +254,7 @@ function parseCliArgs(): { answers: Answers; overrides: Overrides } {
         "no-items": { type: "boolean" },
         subtotals: { type: "boolean" },
         "no-subtotals": { type: "boolean" },
+        "subtotal-label-template": { type: "string" },
       },
     });
   } catch (err) {
@@ -344,6 +352,7 @@ function parseCliArgs(): { answers: Answers; overrides: Overrides } {
       fontBody: values["font-body"],
       items: values["no-items"] ? false : values.items ? true : undefined,
       subtotals: values["no-subtotals"] ? false : values.subtotals ? true : undefined,
+      subtotalLabelTemplate: values["subtotal-label-template"],
     },
   };
 }
@@ -394,7 +403,8 @@ function applyOverrides(config: InvoiceConfig, o: Overrides): void {
     accent = str("accent"),
     paper = str("paper"),
     items = bool("items"),
-    subtotals = bool("subtotals");
+    subtotals = bool("subtotals"),
+    subtotalLabelTemplate = str("subtotalLabelTemplate");
   if (fromName !== undefined) config.from.name = fromName;
   if (fromLines !== undefined) config.from.lines = list(fromLines);
   if (toName !== undefined) config.to.name = toName;
@@ -412,6 +422,8 @@ function applyOverrides(config: InvoiceConfig, o: Overrides): void {
   if (items !== undefined) config.projects["default"] = { ...config.projects["default"], items };
   if (subtotals !== undefined)
     config.projects["default"] = { ...config.projects["default"], subtotal: subtotals };
+  if (subtotalLabelTemplate !== undefined)
+    config.invoice.subtotalLabelTemplate = subtotalLabelTemplate;
   // CLI font paths are relative to the working directory, unlike config ones.
   try {
     config.invoice.fonts = resolveFontSlots(

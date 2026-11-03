@@ -100,6 +100,20 @@ describe("computeInvoice project sections", () => {
     expect(invoice.subtotal).toBe(150);
   });
 
+  test("the subtotal label template names each project with its client", () => {
+    const withClients = [
+      entry({ day: "2026-08-01", project: "Acme", client: "Acme Corp", rate: 50 }),
+      entry({ day: "2026-08-02", project: "Beta", rate: 50 }),
+    ];
+    const config = mergeConfig({
+      invoice: { subtotalLabelTemplate: "{client}: {project}" },
+      projects: { default: { items: false } },
+    });
+    const invoice = computeInvoice(timesheet(withClients), config, options());
+    expect(invoice.sections.map((s) => s.title)).toEqual(["Acme Corp: Acme", ": Beta"]);
+    expect(invoice.lines.map((l) => l.primary)).toEqual(["Acme Corp: Acme", ": Beta"]);
+  });
+
   test("a summarized project billed at several rates gets one row per rate plus a subtotal", () => {
     const mixed = [
       entry({ day: "2026-08-01", project: "Acme", description: "Support", rate: 50 }),

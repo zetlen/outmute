@@ -51,6 +51,11 @@ describe("clockify.parse", () => {
     expect(clockify.parse(csv).entries[0]?.rate).toBe(50);
   });
 
+  test("reads the client from the Client column", () => {
+    const csv = `Client,${HEADER}\nAcme Corp,Acme,Work,Yes,2026-08-01,01:00:00,1,50\n`;
+    expect(clockify.parse(csv).entries[0]?.client).toBe("Acme Corp");
+  });
+
   test("leaves rate absent when the billable rate is blank", () => {
     const csv = `${HEADER}\nAcme,Work,Yes,2026-08-01,01:00:00,1,\n`;
     expect(clockify.parse(csv).entries[0]?.rate).toBeUndefined();
