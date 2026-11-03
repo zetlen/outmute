@@ -36,12 +36,13 @@ describe("clockify.parse", () => {
     expect(() => clockify.parse(csv)).toThrow(AdapterError);
   });
 
-  test("uses Duration (h) when Duration (decimal) is blank", () => {
-    const csv = `${HEADER}\nAcme,Work,Yes,2026-08-01,01:30:00,,50\n`;
-    expect(clockify.parse(csv).entries[0]?.hours).toBe(1.5);
+  test("prefers the exact Duration (h) over the rounded Duration (decimal)", () => {
+    // Clockify rounds the decimal column per row; 0:00:30 shows as 0.01, not 0.00833.
+    const csv = `${HEADER}\nAcme,Work,Yes,2026-08-01,00:00:30,0.01,50\n`;
+    expect(clockify.parse(csv).entries[0]?.hours).toBeCloseTo(30 / 3600, 10);
   });
 
-  test("uses Duration (decimal) when present", () => {
+  test("uses Duration (decimal) when Duration (h) is blank", () => {
     const csv = `${HEADER}\nAcme,Work,Yes,2026-08-01,,2.25,50\n`;
     expect(clockify.parse(csv).entries[0]?.hours).toBe(2.25);
   });

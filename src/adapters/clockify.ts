@@ -18,11 +18,15 @@ function pickDateFormat(rawDates: string[]): DateFormat {
   return fmt;
 }
 
+/**
+ * Prefer "Duration (h)" (exact h:mm:ss) over "Duration (decimal)": Clockify rounds the
+ * decimal column to two places per row, and summing those drifts by cents per invoice.
+ */
 function parseDuration(row: string[], decimalCol: number, hmsCol: number): number {
-  if (decimalCol !== -1 && (row[decimalCol] ?? "").trim()) {
+  const raw = hmsCol !== -1 ? (row[hmsCol] ?? "").trim() : "";
+  if (!raw && decimalCol !== -1 && (row[decimalCol] ?? "").trim()) {
     return parseNumber(row[decimalCol]);
   }
-  const raw = (row[hmsCol] ?? "").trim();
   const parts = raw.split(":");
   if (parts.length !== 3 || parts.some((p) => !/^\d+$/.test(p))) {
     throw new AdapterError(`can't parse duration ${JSON.stringify(raw)}`);
